@@ -1,5 +1,3 @@
-/** Meta tracking — Purchase via CAPI only to avoid Pixel + server double-counting. */
-
 export const FB_PIXEL_ID = '2267627306980280'
 
 const ORDER_PURCHASE_SENT_KEY = 'hc_order_purchase_sent'
@@ -27,7 +25,6 @@ export function markOrderPurchaseSent() {
   }
 }
 
-/** Browser Pixel — AddToCart, PageView, etc. (not Purchase). */
 export function trackBrowserEventOnce(eventName, params, eventId) {
   if (!eventId || typeof window.fbq !== 'function') return false
   const key = `hc_meta_${eventName}_${eventId}`

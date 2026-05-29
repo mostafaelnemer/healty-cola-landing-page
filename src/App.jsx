@@ -125,7 +125,7 @@ const faqs = [
   { q: 'أطلب إزاي؟', a: 'اختار العرض، أكمل بياناتك، وفريقنا هيتواصل معاك لتأكيد الطلب والتوصيل.' },
 ]
 
-const ORDER_API_URL = 'https://script.google.com/macros/s/AKfycbys3iOqUVekPRy6hHdTGx6_D0myLmmn2lisjTYWh0-QO03RNU5kQ9a2tvVbogyg7rYuIw/exec'
+const ORDER_API_URL = 'https://script.google.com/macros/s/AKfycbyi-vUuVLklwANBh54MZtHjyzHZfAlq1rXWcTqTm8cJDO4QRrHM2d4nXJFW0HbhdyMrZw/exec'
 
 const getCookie = (name) => {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
@@ -365,7 +365,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
       }
 
       const purchaseMeta = buildPurchaseMeta({ value: totalPrice, contentName: offerSummary })
-      const { eventName, eventTime, eventId } = purchaseMeta
+      const { eventName, eventTime, eventId, eventParams } = purchaseMeta
 
       const orderPayload = new URLSearchParams({
         name,
@@ -392,6 +392,9 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
       // GET — Apps Script يقرأ e.parameter بشكل موثوق (POST + no-cors كان يفقد eventId)
       const orderUrl = `${ORDER_API_URL}?${orderPayload.toString()}`
       fetch(orderUrl, { method: 'GET', mode: 'no-cors', keepalive: true }).catch(() => {})
+
+      // Browser Pixel — Purchase مع value صح (deduplication عبر eventId)
+      trackBrowserEventOnce(eventName, eventParams, eventId)
 
       markOrderPurchaseSent()
       window.history.pushState({}, '', '/confirmation_order')
