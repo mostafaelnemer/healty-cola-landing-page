@@ -25,6 +25,10 @@ export function markOrderPurchaseSent() {
   }
 }
 
+/**
+ * Fire a browser Pixel event exactly once per eventId.
+ * params MUST include { value: Number, currency: String } for Purchase events.
+ */
 export function trackBrowserEventOnce(eventName, params, eventId) {
   if (!eventId || typeof window.fbq !== 'function') return false
   const key = `hc_meta_${eventName}_${eventId}`
@@ -32,20 +36,44 @@ export function trackBrowserEventOnce(eventName, params, eventId) {
     if (sessionStorage.getItem(key) === '1') return false
     sessionStorage.setItem(key, '1')
   } catch {
-    /* continue */
+    /* continue even if sessionStorage is unavailable */
   }
+
+  // Debug log — remove after confirming Meta receives value correctly
+  console.log('[MetaPixel] Firing event:', {
+    event_name: eventName,
+    value: params.value,
+    currency: params.currency,
+    event_id: eventId,
+    params,
+  })
+
   window.fbq('track', eventName, params, { eventID: eventId })
   return true
 }
 
+/**
+ * Build the shared meta payload for a Purchase event.
+ * value MUST be a plain Number (e.g. 648), never a string like "648 ج.م".
+ */
 export function buildPurchaseMeta({ value, contentName, eventId }) {
   const id = eventId || createMetaEventId('purchase')
+  const numericValue = Number(value)
+
+  // Debug log — remove after confirming Meta receives value correctly
+  console.log('[MetaTracking] buildPurchaseMeta:', {
+    raw_value: value,
+    numeric_value: numericValue,
+    content_name: contentName,
+    event_id: id,
+  })
+
   return {
     eventId: id,
     eventTime: Math.floor(Date.now() / 1000),
     eventName: 'Purchase',
     eventParams: {
-      value,
+      value: numericValue,       // plain Number — e.g. 648
       currency: 'EGP',
       content_name: contentName,
       content_type: 'product',

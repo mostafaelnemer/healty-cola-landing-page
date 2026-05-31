@@ -359,13 +359,19 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
     try {
       const orderSummary = buildOrderSummary()
       const offerSummary = buildOfferSummary()
-      if (wasOrderPurchaseSent()) {
-        setStatus('done')
-        return
-      }
 
       const purchaseMeta = buildPurchaseMeta({ value: totalPrice, contentName: offerSummary })
       const { eventName, eventTime, eventId, eventParams } = purchaseMeta
+
+      // Debug log — verify value before sending to Meta
+      console.log('[Order] Purchase payload debug:', {
+        event_name: eventName,
+        event_id: eventId,
+        value: eventParams.value,
+        currency: eventParams.currency,
+        totalPrice,
+        typeof_value: typeof eventParams.value,
+      })
 
       const orderPayload = new URLSearchParams({
         name,
@@ -377,6 +383,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
         subtotal: `${subtotal} ج.م`,
         shippingFee: `${DELIVERY_FEE} ج.م`,
         price: `${totalPrice} ج.م`,
+        value: String(totalPrice),          // plain number string — Apps Script parses with Number()
         quantity: String(cartItems.reduce((s, i) => s + i.qty, 0)),
         flavors: orderSummary,
         productWeight: PRODUCT_SIZES_LABEL,
@@ -391,9 +398,13 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
 
       // GET — Apps Script يقرأ e.parameter بشكل موثوق (POST + no-cors كان يفقد eventId)
       const orderUrl = `${ORDER_API_URL}?${orderPayload.toString()}`
-      fetch(orderUrl, { method: 'GET', mode: 'no-cors', keepalive: true }).catch(() => {})
 
-      // Browser Pixel — Purchase مع value صح (deduplication عبر eventId)
+      // Only send to sheet + CAPI once per session (dedup guard for sheet/CAPI layer)
+      if (!wasOrderPurchaseSent()) {
+        fetch(orderUrl, { method: 'GET', mode: 'no-cors', keepalive: true }).catch(() => {})
+      }
+
+      // Browser Pixel — Purchase with correct numeric value (deduplication via eventId)
       trackBrowserEventOnce(eventName, eventParams, eventId)
 
       markOrderPurchaseSent()
@@ -873,10 +884,18 @@ function App() {
           setFlow('form')
           window.scrollTo({ top: 0, behavior: 'instant' })
           window.history.pushState({}, '', '/add_to_cart')
+          const addToCartValue = calcOrderTotal(items)
+          const addToCartEventId = createMetaEventId('addtocart')
+          // Debug log — verify AddToCart value
+          console.log('[MetaPixel] AddToCart:', { value: addToCartValue, currency: 'EGP', event_id: addToCartEventId })
           trackBrowserEventOnce(
             'AddToCart',
-            { currency: 'EGP', content_type: 'product' },
-            createMetaEventId('addtocart'),
+            {
+              value: addToCartValue,          // numeric total including shipping
+              currency: 'EGP',
+              content_type: 'product',
+            },
+            addToCartEventId,
           )
         }}
       />
