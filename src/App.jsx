@@ -292,6 +292,9 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
   const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
   const [status, setStatus] = useState('idle')
+  // purchaseSubmitLock prevents re-entry during the async submit.
+  // It is set to the eventId string (not just true) so we can detect
+  // if a second call arrives with the same or a different eventId.
   const purchaseSubmitLock = useRef(false)
   const [touched, setTouched] = useState({})
   const [itemFlavors, setItemFlavors] = useState(() =>
@@ -341,7 +344,11 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
     cartItems.map((item) => `${item.bundle.name} ×${item.qty}`).join(' | ')
 
   const handleSubmit = async () => {
-    if (status === 'sending' || status === 'done' || purchaseSubmitLock.current) return
+    // Guard 1: status-based lock (catches re-renders and rapid taps after completion)
+    if (status === 'sending' || status === 'done') return
+    // Guard 2: ref-based lock (catches rapid double-taps before state update propagates)
+    if (purchaseSubmitLock.current) return
+
     setTouched({ name: true, phone: true, gov: true, address: true })
     const currentErrors = {
       name: !name.trim() ? 'الاسم مطلوب' : '',
@@ -354,23 +361,29 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
       document.getElementById(`field-${firstError}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
+
+    // Set lock BEFORE any async work — prevents all re-entry paths
     purchaseSubmitLock.current = true
     setStatus('sending')
+
     try {
       const orderSummary = buildOrderSummary()
       const offerSummary = buildOfferSummary()
 
+      // Build purchase meta ONCE — this generates the single eventId shared by
+      // both the browser Pixel and the CAPI call. Never call buildPurchaseMeta()
+      // twice for the same order.
       const purchaseMeta = buildPurchaseMeta({ value: totalPrice, contentName: offerSummary })
       const { eventName, eventTime, eventId, eventParams } = purchaseMeta
 
-      // Debug log — verify value before sending to Meta
-      console.log('[Order] Purchase payload debug:', {
+      // Debug log — verify value/currency/event_id before any network call
+      console.log('[Order] Purchase submit:', {
         event_name: eventName,
         event_id: eventId,
         value: eventParams.value,
         currency: eventParams.currency,
-        totalPrice,
         typeof_value: typeof eventParams.value,
+        totalPrice,
       })
 
       const orderPayload = new URLSearchParams({
@@ -389,32 +402,42 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
         productWeight: PRODUCT_SIZES_LABEL,
         eventName,
         eventTime: String(eventTime),
-        eventId,
+        eventId,                            // same id sent to CAPI server-side
         eventSourceUrl: window.location.href,
         fbp: getCookie('_fbp'),
         fbc: getFbc(),
         userAgent: navigator.userAgent,
       })
 
-      // GET — Apps Script يقرأ e.parameter بشكل موثوق (POST + no-cors كان يفقد eventId)
-      const orderUrl = `${ORDER_API_URL}?${orderPayload.toString()}`
-
-      // Only send to sheet + CAPI once per session (dedup guard for sheet/CAPI layer)
+      // ── CAPI (server-side) ────────────────────────────────────────────────
+      // Only send to sheet + CAPI once per session.
+      // Apps Script has its own capiAlreadySent() guard using CacheService,
+      // but we add a client-side guard here as a first line of defence.
       if (!wasOrderPurchaseSent()) {
+        const orderUrl = `${ORDER_API_URL}?${orderPayload.toString()}`
         fetch(orderUrl, { method: 'GET', mode: 'no-cors', keepalive: true }).catch(() => {})
       }
 
-      // Browser Pixel — Purchase with correct numeric value (deduplication via eventId)
+      // ── Browser Pixel ─────────────────────────────────────────────────────
+      // trackBrowserEventOnce uses its own sessionStorage key per (eventName+eventId)
+      // so it is safe to call even if wasOrderPurchaseSent() was already true.
+      // The eventID option MUST match the event_id sent to CAPI above.
       trackBrowserEventOnce(eventName, eventParams, eventId)
 
+      // Mark order as sent — blocks CAPI re-send on any future submit attempt
       markOrderPurchaseSent()
+
       window.history.pushState({}, '', '/confirmation_order')
       setStatus('done')
-    } catch {
+    } catch (err) {
+      console.error('[Order] Submit error:', err)
       setStatus('done')
-    } finally {
-      purchaseSubmitLock.current = false
     }
+    // NOTE: purchaseSubmitLock is intentionally NOT released in finally.
+    // Once an order is submitted (success or error) the lock stays true
+    // for the lifetime of this component instance, preventing any retry
+    // from firing a second Purchase event. The status === 'done' guard
+    // also catches this, but the lock is a belt-and-suspenders safety net.
   }
 
   if (status === 'done') {
@@ -589,6 +612,9 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
 function Landing({ onConfirm }) {
   const [openFaq, setOpenFaq] = useState(null)
   const [cart, setCart] = useState({})
+  // Prevents AddToCart from firing twice if both checkout buttons are tapped
+  // rapidly, or if onConfirm is called before the flow state transitions.
+  const checkoutLock = useRef(false)
 
   const cartCount = Object.values(cart).reduce((s, q) => s + q, 0)
   const cartItems = bundles
@@ -606,10 +632,12 @@ function Landing({ onConfirm }) {
   }
 
   const handleCheckout = () => {
+    if (checkoutLock.current) return
     const items = bundles
       .filter(b => (cart[b.id] || 0) > 0)
       .map(b => ({ bundle: b, qty: cart[b.id] }))
     if (items.length === 0) return
+    checkoutLock.current = true
     onConfirm(items)
   }
 
@@ -875,6 +903,8 @@ function Landing({ onConfirm }) {
 function App() {
   const [flow, setFlow] = useState('landing')
   const [cartItems, setCartItems] = useState([])
+  // Prevents AddToCart pixel from firing more than once per page session
+  const addToCartSentRef = useRef(false)
 
   if (flow === 'landing') {
     return (
@@ -884,19 +914,27 @@ function App() {
           setFlow('form')
           window.scrollTo({ top: 0, behavior: 'instant' })
           window.history.pushState({}, '', '/add_to_cart')
-          const addToCartValue = calcOrderTotal(items)
-          const addToCartEventId = createMetaEventId('addtocart')
-          // Debug log — verify AddToCart value
-          console.log('[MetaPixel] AddToCart:', { value: addToCartValue, currency: 'EGP', event_id: addToCartEventId })
-          trackBrowserEventOnce(
-            'AddToCart',
-            {
-              value: addToCartValue,          // numeric total including shipping
+
+          // Fire AddToCart pixel exactly once per session
+          if (!addToCartSentRef.current) {
+            addToCartSentRef.current = true
+            const addToCartValue = calcOrderTotal(items)
+            const addToCartEventId = createMetaEventId('addtocart')
+            console.log('[MetaPixel] AddToCart:', {
+              value: addToCartValue,
               currency: 'EGP',
-              content_type: 'product',
-            },
-            addToCartEventId,
-          )
+              event_id: addToCartEventId,
+            })
+            trackBrowserEventOnce(
+              'AddToCart',
+              {
+                value: addToCartValue,
+                currency: 'EGP',
+                content_type: 'product',
+              },
+              addToCartEventId,
+            )
+          }
         }}
       />
     )
