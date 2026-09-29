@@ -5,7 +5,6 @@ import healthyCola from './assets/healthy_cola.png'
 import healthyLemon from './assets/healthy_lemon.png'
 import logo from './assets/logo.png'
 import offerSummer from './assets/summer.jpeg'
-import offerLama from './assets/lama.jpeg'
 import offerShrink from './assets/shrink.jpeg'
 import offerCombo from './assets/combo.jpeg'
 import './App.css'
@@ -21,9 +20,9 @@ const HEALTHY_LEMON_SIZE = `${HEALTHY_LEMON_VOLUME_ML} مل`
 /** ملخص الأحجام الرسمية للطلب (كولا + ليمون نعناع) */
 const PRODUCT_SIZES_LABEL = `كولا ${HEALTHY_COLA_SIZE} · ليمون نعناع ${HEALTHY_LEMON_SIZE}`
 
-const DELIVERY_FEE = 49
+const DELIVERY_FEE = 50
 const SHRINK_LABEL = 'شرنك (12 عبوة)'
-const SHIPPING_ONCE_LABEL = 'شحن الطلب 49 ج.م مرة واحدة'
+const SHIPPING_ONCE_LABEL = 'التوصيل مجاني لعرض الصيف والكومبو · عرض الشرنك + 50 ج شحن'
 const DELIVERY_HOURS_LABEL = 'التوصيل خلال ساعات من تأكيد الطلب'
 
 /** ثقة الشراء — تظهر مرة واحدة أسفل العروض فقط */
@@ -32,28 +31,37 @@ const offerTrustBadges = [
   { icon: '📞', label: 'تأكيد الطلب سريع' },
 ]
 
-// الشحن يُطبَّق مرة واحدة لكل طلب (order) مهما تعددت الباقات أو الكميات — وليس على كل منتج/باقة.
+// الشحن يُطبَّق مرة واحدة لكل طلب — مجاني تماماً لو السلة كلها عروض بتوصيل مجاني،
+// و50 ج مرة واحدة لو السلة فيها عرض الشرنك (أبو 229).
 const calcItemsSubtotal = (items) =>
   items.reduce((sum, item) => sum + item.bundle.price * item.qty, 0)
 
 const calcItemsOriginalSubtotal = (items) =>
   items.reduce((sum, item) => sum + item.bundle.originalPrice * item.qty, 0)
 
-/** total = مجموع المنتجات + شحن واحد فقط */
-const calcOrderTotal = (items) => calcItemsSubtotal(items) + DELIVERY_FEE
+const calcShipping = (items) => {
+  if (items.length === 0) return 0
+  const hasPaidShipping = items.some((item) => !item.bundle.freeShipping)
+  return hasPaidShipping ? DELIVERY_FEE : 0
+}
 
-const calcOrderOriginalTotal = (items) => calcItemsOriginalSubtotal(items) + DELIVERY_FEE
+/** total = مجموع المنتجات + شحن واحد فقط (أو مجاني) */
+const calcOrderTotal = (items) => calcItemsSubtotal(items) + calcShipping(items)
+
+const calcOrderOriginalTotal = (items) => calcItemsOriginalSubtotal(items) + calcShipping(items)
 
 const bundles = [
   {
     id: 'summer',
     name: 'عرض الصيف',
     badge: '⭐ الأكثر طلبًا',
-    description: `اشتري 2 ${SHRINK_LABEL} Healthy Cola (${HEALTHY_COLA_SIZE}) واحصل على ${SHRINK_LABEL} مجاناً + 5 Oat Bites مجاناً`,
+    description: `اشتري 2 ${SHRINK_LABEL} Healthy Cola (${HEALTHY_COLA_SIZE}) واحصل على ${SHRINK_LABEL} مجاناً`,
     price: 599,
     originalPrice: 900,
     saving: 301,
-    note: `2 ${SHRINK_LABEL} + ${SHRINK_LABEL} هدية + 5 Oat Bites — أقوى عرض الصيف.`,
+    note: `2 ${SHRINK_LABEL} + ${SHRINK_LABEL} هدية — أقوى عرض الصيف.`,
+    deliveryNote: 'التوصيل مجاني 🚚',
+    freeShipping: true,
     image: offerSummer,
     accent: '#F97316',
   },
@@ -66,6 +74,8 @@ const bundles = [
     originalPrice: 450,
     saving: 151,
     note: `${SHRINK_LABEL} + هدية من اختيارك — أفضل قيمة.`,
+    deliveryNote: 'التوصيل مجاني 🚚',
+    freeShipping: true,
     image: offerCombo,
     accent: '#6B21A8',
   },
@@ -78,20 +88,10 @@ const bundles = [
     originalPrice: 300,
     saving: 71,
     note: `${SHRINK_LABEL} — يكفي البيت طول الشهر.`,
+    deliveryNote: 'التوصيل 50 جنيه',
+    freeShipping: false,
     image: offerShrink,
     accent: '#DC2626',
-  },
-  {
-    id: 'lamma',
-    name: 'عرض اللمة',
-    badge: '☀️ عرض محدود',
-    description: `5 عبوات Healthy Cola (${HEALTHY_COLA_SIZE})`,
-    price: 99,
-    originalPrice: 125,
-    saving: 26,
-    note: 'مثالي للّمة، الماتش، أو أي خروجة.',
-    image: offerLama,
-    accent: '#D4A017',
   },
 ]
 
@@ -117,7 +117,8 @@ const faqs = [
   { q: 'إيه حجم عبوة Healthy Cola؟', a: `نكهة الكولا ${HEALTHY_COLA_SIZE}، ونكهة ليمون نعناع ${HEALTHY_LEMON_SIZE}.` },
   { q: 'إيه حجم زجاجة ليمون نعناع؟', a: `حجم الزجاجة الرسمي ${HEALTHY_LEMON_SIZE}.` },
   { q: 'إيه معنى شرنك؟', a: `${SHRINK_LABEL} — أي 12 عبوة في العرض.` },
-  { q: 'الشحن بيتكرر على كل باقة؟', a: `لا، ${SHIPPING_ONCE_LABEL} على الطلب بالكامل.` },
+  { q: 'التوصيل مجاني ولا بفلوس؟', a: 'عرض الصيف وعرض الكومبو التوصيل فيهم مجاني تماماً. عرض الشرنك (229) بس هو اللي عليه شحن 50 ج مرة واحدة على الطلب.' },
+  { q: 'الشحن بيتكرر على كل باقة؟', a: 'لا، الشحن مرة واحدة بس على الطلب كله — ولو طلبك كله عروض بتوصيل مجاني مش هتدفع شحن خالص.' },
   { q: 'التوصيل بياخد قد إيه؟', a: 'فريق Healthy Cola بيتواصل سريعاً لتأكيد الطلب، والتوصيل يبدأ خلال ساعات بعد التأكيد. معظم الطلبات تصل في نفس اليوم حسب المنطقة.' },
   { q: 'هل Healthy Cola فيها سكر؟', a: 'لا، المنتج 0 سكر ومحلى بالاستيفيا بدل السكر التقليدي.' },
   { q: 'هل مناسبة لمرضى السكر والكيتو؟', a: 'نعم، لأنها 0 سعرات حرارية ومناسبة لمرضى السكر ونظام الكيتو دايت وأي نظام منخفض السعرات.' },
@@ -168,7 +169,8 @@ function OrderExpectationBox() {
   )
 }
 
-function OrderTotalBreakdown({ subtotal, total, originalTotal, saving }) {
+function OrderTotalBreakdown({ subtotal, shippingFee, total, originalTotal, saving }) {
+  const isFree = !shippingFee || shippingFee === 0
   return (
     <div className="order-breakdown" aria-label="تفاصيل الإجمالي">
       <div className="order-breakdown-row">
@@ -177,7 +179,7 @@ function OrderTotalBreakdown({ subtotal, total, originalTotal, saving }) {
       </div>
       <div className="order-breakdown-row">
         <span>الشحن</span>
-        <span>{DELIVERY_FEE} ج.م</span>
+        <span>{isFree ? 'مجاني 🚚' : `${shippingFee} ج.م`}</span>
       </div>
       <div className="order-breakdown-row order-breakdown-total">
         <span>الإجمالي</span>
@@ -189,7 +191,7 @@ function OrderTotalBreakdown({ subtotal, total, originalTotal, saving }) {
       {saving > 0 && (
         <p className="order-breakdown-saving">وفرت {saving} ج.م</p>
       )}
-      <p className="order-breakdown-note">{SHIPPING_ONCE_LABEL}</p>
+      <p className="order-breakdown-note">{isFree ? 'التوصيل مجاني لطلبك 🎉' : SHIPPING_ONCE_LABEL}</p>
       <DeliveryHighlight compact />
     </div>
   )
@@ -198,7 +200,7 @@ function OrderTotalBreakdown({ subtotal, total, originalTotal, saving }) {
 // ─── FLAVOR PICKER COMPONENT ─────────────────────────────────────────────────
 
 function FlavorPicker({ bundleId, qty, flavors, onChange, label, total: totalOverride, showHint = true }) {
-  const perUnit = bundleId === 'lamma' ? 5 : bundleId === 'combo' ? 18 : bundleId === 'summer' ? 36 : 12
+  const perUnit = bundleId === 'combo' ? 18 : bundleId === 'summer' ? 36 : 12
   const total = totalOverride !== undefined ? totalOverride : perUnit * qty
   const cola = flavors.cola ?? 0
   const lemon = flavors.lemon ?? (total - cola)
@@ -299,7 +301,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
   const [touched, setTouched] = useState({})
   const [itemFlavors, setItemFlavors] = useState(() =>
     initialItems.map(item => {
-      const perUnit = item.bundle.id === 'lamma' ? 5 : item.bundle.id === 'combo' ? 18 : item.bundle.id === 'summer' ? 36 : 12
+      const perUnit = item.bundle.id === 'combo' ? 18 : item.bundle.id === 'summer' ? 36 : 12
       const base = { cola: Math.floor((perUnit * item.qty) / 2) }
       return base
     })
@@ -317,6 +319,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
 
   const cartItems = items
   const subtotal = calcItemsSubtotal(cartItems)
+  const shippingFee = calcShipping(cartItems)
   const totalPrice = calcOrderTotal(cartItems)
   const totalOriginal = calcOrderOriginalTotal(cartItems)
   const totalSaving = totalOriginal - totalPrice
@@ -332,7 +335,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
 
   const buildOrderSummary = () =>
     cartItems.map((item, i) => {
-      const perUnit = item.bundle.id === 'lamma' ? 5 : item.bundle.id === 'combo' ? 18 : item.bundle.id === 'summer' ? 36 : 12
+      const perUnit = item.bundle.id === 'combo' ? 18 : item.bundle.id === 'summer' ? 36 : 12
       const total = perUnit * item.qty
       const cola = itemFlavors[i].cola ?? 0
       const lemon = itemFlavors[i].lemon ?? (total - cola)
@@ -394,7 +397,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
         notes: notes || '',
         bundle: offerSummary,
         subtotal: `${subtotal} ج.م`,
-        shippingFee: `${DELIVERY_FEE} ج.م`,
+        shippingFee: shippingFee === 0 ? 'مجاني' : `${shippingFee} ج.م`,
         price: `${totalPrice} ج.م`,
         value: String(totalPrice),          // plain number string — Apps Script parses with Number()
         quantity: String(cartItems.reduce((s, i) => s + i.qty, 0)),
@@ -463,7 +466,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
             </div>
             <div className="success-card-divider" />
             {cartItems.map((item, i) => {
-              const perUnit = item.bundle.id === 'lamma' ? 5 : item.bundle.id === 'combo' ? 18 : item.bundle.id === 'summer' ? 36 : 12
+              const perUnit = item.bundle.id === 'combo' ? 18 : item.bundle.id === 'summer' ? 36 : 12
               const total = perUnit * item.qty
               const cola = itemFlavors[i].cola ?? 0
               const lemon = itemFlavors[i].lemon ?? (total - cola)
@@ -488,7 +491,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
             </div>
             <div className="success-card-row">
               <span className="success-label">الشحن (مرة واحدة)</span>
-              <span className="success-val">{DELIVERY_FEE} ج.م</span>
+              <span className="success-val">{shippingFee === 0 ? 'مجاني 🚚' : `${shippingFee} ج.م`}</span>
             </div>
             <div className="success-card-row">
               <span className="success-label">الإجمالي</span>
@@ -542,6 +545,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
               </div>
               <div className="confirm-badges">
                 <span className="confirm-badge green">وفرت {item.bundle.saving * item.qty} ج.م</span>
+                <span className={`confirm-badge ${item.bundle.freeShipping ? 'green' : 'gray'}`}>{item.bundle.freeShipping ? '🚚 توصيل مجاني' : '🚚 التوصيل 50 ج'}</span>
               </div>
             </div>
           </div>
@@ -561,6 +565,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
 
       <OrderTotalBreakdown
         subtotal={subtotal}
+        shippingFee={shippingFee}
         total={totalPrice}
         originalTotal={totalOriginal}
         saving={totalSaving}
@@ -621,6 +626,7 @@ function Landing({ onConfirm }) {
     .filter(b => (cart[b.id] || 0) > 0)
     .map(b => ({ bundle: b, qty: cart[b.id] }))
   const cartCheckoutTotal = calcOrderTotal(cartItems)
+  const cartShipping = calcShipping(cartItems)
 
   const addToCart = (bundleId) => setCart(c => ({ ...c, [bundleId]: (c[bundleId] || 0) + 1 }))
   const setQty = (bundleId, val) => {
@@ -657,7 +663,7 @@ function Landing({ onConfirm }) {
             ))}
           </div>
           <button className="sticky-cart-btn" onClick={handleCheckout}>
-            أكمل الطلب — {cartCheckoutTotal} ج.م ←
+            أكمل الطلب — {cartCheckoutTotal} ج.م {cartShipping === 0 ? '· توصيل مجاني 🚚' : ''} ←
           </button>
         </div>
       )}
@@ -788,6 +794,9 @@ function Landing({ onConfirm }) {
                   <h3>{bundle.name}</h3>
                   <p>{bundle.description}</p>
                   <p className="bundle-row-note">{bundle.note}</p>
+                  <p className={`delivery-tag ${bundle.freeShipping ? 'delivery-tag--free' : 'delivery-tag--paid'}`}>
+                    {bundle.deliveryNote || (bundle.freeShipping ? '🚚 التوصيل مجاني' : '🚚 التوصيل 50 جنيه')}
+                  </p>
                   <div className="bundle-row-price">
                     <strong>{bundle.price * Math.max(qty, 1)} ج.م</strong>
                     <s>{bundle.originalPrice * Math.max(qty, 1)} ج.م</s>
@@ -814,7 +823,7 @@ function Landing({ onConfirm }) {
         <OfferTrustPills />
         {cartCount > 0 && (
           <button type="button" className="next-btn landing-next-btn" onClick={handleCheckout}>
-            أكمل الطلب ({cartCount} قطعة — {cartCheckoutTotal} ج.م شامل الشحن مرة واحدة) ←
+            أكمل الطلب ({cartCount} قطعة — {cartCheckoutTotal} ج.م {cartShipping === 0 ? '· التوصيل مجاني 🚚' : 'شامل الشحن'}) ←
           </button>
         )}
       </section>
