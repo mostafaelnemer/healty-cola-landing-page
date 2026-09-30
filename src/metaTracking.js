@@ -25,12 +25,34 @@ export function wasOrderPurchaseSent() {
     return false
   }
 }
-
 export function markOrderPurchaseSent() {
   try {
     sessionStorage.setItem(ORDER_PURCHASE_SENT_KEY, '1')
   } catch {
     /* ignore — sessionStorage unavailable (private browsing edge case) */
+  }
+}
+
+// ─── SESSION PURCHASE EVENT ID ────────────────────────────────────────────────
+// One eventId per browser session. Reused across resubmits so Meta can always
+// deduplicate (same event_name + event_id), even if the user goes back and
+// submits again — the CAPI guard skips the server resend while the browser
+// event carries the identical id.
+const ORDER_PURCHASE_EVENT_ID_KEY = 'hc_order_purchase_event_id'
+
+export function getSessionPurchaseEventId() {
+  try {
+    return sessionStorage.getItem(ORDER_PURCHASE_EVENT_ID_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+export function setSessionPurchaseEventId(eventId) {
+  try {
+    if (eventId) sessionStorage.setItem(ORDER_PURCHASE_EVENT_ID_KEY, eventId)
+  } catch {
+    /* ignore — sessionStorage unavailable */
   }
 }
 

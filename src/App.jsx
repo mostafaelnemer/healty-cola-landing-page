@@ -1,5 +1,5 @@
 ﻿import { useState, useRef } from 'react'
-import { buildPurchaseMeta, createMetaEventId, markOrderPurchaseSent, trackBrowserEventOnce, wasOrderPurchaseSent } from './metaTracking'
+import { buildPurchaseMeta, createMetaEventId, getSessionPurchaseEventId, markOrderPurchaseSent, setSessionPurchaseEventId, trackBrowserEventOnce, wasOrderPurchaseSent } from './metaTracking'
 import { CheckCircle2, Phone, Mail } from 'lucide-react'
 import healthyCola from './assets/healthy_cola.png'
 import healthyLemon from './assets/healthy_lemon.png'
@@ -373,10 +373,11 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
       const orderSummary = buildOrderSummary()
       const offerSummary = buildOfferSummary()
 
-      // Build purchase meta ONCE — this generates the single eventId shared by
-      // both the browser Pixel and the CAPI call. Never call buildPurchaseMeta()
-      // twice for the same order.
-      const purchaseMeta = buildPurchaseMeta({ value: totalPrice, contentName: offerSummary })
+      // Build purchase meta ONCE per session — reuse the session eventId so any
+      // resubmit carries the identical id and Meta deduplicates automatically.
+      // Never call buildPurchaseMeta() twice with different ids for the same order.
+      const purchaseMeta = buildPurchaseMeta({ value: totalPrice, contentName: offerSummary, eventId: getSessionPurchaseEventId() || undefined })
+      setSessionPurchaseEventId(purchaseMeta.eventId)
       const { eventName, eventTime, eventId, eventParams } = purchaseMeta
 
       // Debug log — verify value/currency/event_id before any network call
