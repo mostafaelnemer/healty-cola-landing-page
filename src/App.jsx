@@ -1,5 +1,5 @@
-﻿import { useState, useRef } from 'react'
-import { buildPurchaseMeta, createMetaEventId, getSessionPurchaseEventId, markOrderPurchaseSent, setSessionPurchaseEventId, trackBrowserEventOnce, wasOrderPurchaseSent } from './metaTracking'
+﻿import { useEffect, useRef, useState } from 'react'
+import { buildPurchaseMeta, markOrderPurchaseSent, sendServerEvent, trackBrowserEventOnce, trackMetaEvent, wasOrderPurchaseSent } from './metaTracking'
 import { CheckCircle2, Phone, Mail } from 'lucide-react'
 import healthyCola from './assets/healthy_cola.png'
 import healthyLemon from './assets/healthy_lemon.png'
@@ -125,20 +125,6 @@ const faqs = [
   { q: 'هل فيها أسبارتام؟', a: 'لا، Healthy Cola بدون أسبارتام تماماً.' },
   { q: 'أطلب إزاي؟', a: 'اختار العرض، أكمل بياناتك، وفريقنا هيتواصل معاك لتأكيد الطلب والتوصيل.' },
 ]
-
-const ORDER_API_URL = 'https://script.google.com/macros/s/AKfycbyi-vUuVLklwANBh54MZtHjyzHZfAlq1rXWcTqTm8cJDO4QRrHM2d4nXJFW0HbhdyMrZw/exec'
-
-const getCookie = (name) => {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
-  return match ? decodeURIComponent(match[1]) : ''
-}
-
-const getFbc = () => {
-  const existing = getCookie('_fbc')
-  if (existing) return existing
-  const fbclid = new URLSearchParams(window.location.search).get('fbclid')
-  return fbclid ? `fb.1.${Date.now()}.${fbclid}` : ''
-}
 
 // ─── TRUST & ORDER UI HELPERS ────────────────────────────────────────────────
 
@@ -373,53 +359,38 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
       const orderSummary = buildOrderSummary()
       const offerSummary = buildOfferSummary()
 
-      // Build purchase meta ONCE per session — reuse the session eventId so any
-      // resubmit carries the identical id and Meta deduplicates automatically.
-      // Never call buildPurchaseMeta() twice with different ids for the same order.
-      const purchaseMeta = buildPurchaseMeta({ value: totalPrice, contentName: offerSummary, eventId: getSessionPurchaseEventId() || undefined })
-      setSessionPurchaseEventId(purchaseMeta.eventId)
-      const { eventName, eventTime, eventId, eventParams } = purchaseMeta
-
-      // Debug log — verify value/currency/event_id before any network call
-      console.log('[Order] Purchase submit:', {
-        event_name: eventName,
-        event_id: eventId,
-        value: eventParams.value,
-        currency: eventParams.currency,
-        typeof_value: typeof eventParams.value,
-        totalPrice,
+      // buildPurchaseMeta resolves the session-scoped eventId, so a resubmit
+      // carries the identical id and Meta deduplicates it automatically.
+      const { eventName, eventTime, eventId, eventParams } = buildPurchaseMeta({
+        value: totalPrice,
+        contentName: offerSummary,
       })
 
-      const orderPayload = new URLSearchParams({
-        name,
-        phone,
-        gov,
-        address,
-        notes: notes || '',
-        bundle: offerSummary,
-        subtotal: `${subtotal} ج.م`,
-        shippingFee: shippingFee === 0 ? 'مجاني' : `${shippingFee} ج.م`,
-        price: `${totalPrice} ج.م`,
-        value: String(totalPrice),          // plain number string — Apps Script parses with Number()
-        quantity: String(cartItems.reduce((s, i) => s + i.qty, 0)),
-        flavors: orderSummary,
-        productWeight: PRODUCT_SIZES_LABEL,
-        eventName,
-        eventTime: String(eventTime),
-        eventId,                            // same id sent to CAPI server-side
-        eventSourceUrl: window.location.href,
-        fbp: getCookie('_fbp'),
-        fbc: getFbc(),
-        userAgent: navigator.userAgent,
-      })
+      console.log('[Order] Purchase submit:', { event_id: eventId, value: eventParams.value, totalPrice })
 
       // ── CAPI (server-side) ────────────────────────────────────────────────
-      // Only send to sheet + CAPI once per session.
-      // Apps Script has its own capiAlreadySent() guard using CacheService,
-      // but we add a client-side guard here as a first line of defence.
+      // Only send to sheet + CAPI once per session. Apps Script has its own
+      // capiAlreadySent() guard using CacheService; this is the first line of defence.
       if (!wasOrderPurchaseSent()) {
-        const orderUrl = `${ORDER_API_URL}?${orderPayload.toString()}`
-        fetch(orderUrl, { method: 'GET', mode: 'no-cors', keepalive: true }).catch(() => {})
+        sendServerEvent({
+          name,
+          phone,
+          gov,
+          address,
+          notes: notes || '',
+          bundle: offerSummary,
+          subtotal: `${subtotal} ج.م`,
+          shippingFee: shippingFee === 0 ? 'مجاني' : `${shippingFee} ج.م`,
+          price: `${totalPrice} ج.م`,
+          value: String(totalPrice),          // plain number string — Apps Script parses with Number()
+          quantity: String(cartItems.reduce((s, i) => s + i.qty, 0)),
+          flavors: orderSummary,
+          productWeight: PRODUCT_SIZES_LABEL,
+          eventName,
+          eventTime: String(eventTime),
+          eventId,                            // same id sent to the browser pixel below
+          contentName: offerSummary,
+        })
       }
 
       // ── Browser Pixel ─────────────────────────────────────────────────────
@@ -913,8 +884,21 @@ function Landing({ onConfirm }) {
 function App() {
   const [flow, setFlow] = useState('landing')
   const [cartItems, setCartItems] = useState([])
-  // Prevents AddToCart pixel from firing more than once per page session
-  const addToCartSentRef = useRef(false)
+
+  // One ViewContent per page load on both channels with a shared event_id.
+  // The SPA swaps routes via pushState, so this deliberately does not re-fire
+  // on flow changes.
+  useEffect(() => {
+    trackMetaEvent(
+      'ViewContent',
+      {
+        content_name: PRODUCT_SIZES_LABEL,
+        content_type: 'product',
+        currency: 'EGP',
+      },
+      PRODUCT_SIZES_LABEL,
+    )
+  }, [])
 
   if (flow === 'landing') {
     return (
@@ -925,26 +909,17 @@ function App() {
           window.scrollTo({ top: 0, behavior: 'instant' })
           window.history.pushState({}, '', '/add_to_cart')
 
-          // Fire AddToCart pixel exactly once per session
-          if (!addToCartSentRef.current) {
-            addToCartSentRef.current = true
-            const addToCartValue = calcOrderTotal(items)
-            const addToCartEventId = createMetaEventId('addtocart')
-            console.log('[MetaPixel] AddToCart:', {
-              value: addToCartValue,
+          const contentName = items.map((item) => `${item.bundle.name} ×${item.qty}`).join(' | ')
+          trackMetaEvent(
+            'AddToCart',
+            {
+              value: calcOrderTotal(items),
               currency: 'EGP',
-              event_id: addToCartEventId,
-            })
-            trackBrowserEventOnce(
-              'AddToCart',
-              {
-                value: addToCartValue,
-                currency: 'EGP',
-                content_type: 'product',
-              },
-              addToCartEventId,
-            )
-          }
+              content_name: contentName,
+              content_type: 'product',
+            },
+            contentName,
+          )
         }}
       />
     )
