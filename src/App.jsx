@@ -7,6 +7,7 @@ import logo from './assets/logo.png'
 import offerSummer from './assets/summer.jpeg'
 import offerShrink from './assets/shrink.jpeg'
 import offerCombo from './assets/combo.jpeg'
+import { useOffers } from './useOffers'
 import './App.css'
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
@@ -50,13 +51,18 @@ const calcOrderTotal = (items) => calcItemsSubtotal(items) + calcShipping(items)
 
 const calcOrderOriginalTotal = (items) => calcItemsOriginalSubtotal(items) + calcShipping(items)
 
-const bundles = [
+/** عدد العبوات في العرض الواحد — بييجي من الداشبورد (units) */
+const unitsPerBundle = (bundle) => Math.max(1, Number(bundle?.units) || 12)
+
+/** العروض المحلية: fallback + مصدر الصور المحلية. الـ id هنا لازم يطابق الـ slug في الداشبورد */
+const LOCAL_BUNDLES = [
   {
     id: 'summer',
     name: 'عرض الصيف',
     badge: '⭐ الأكثر طلبًا',
     description: `اشتري 2 ${SHRINK_LABEL} Healthy Cola (${HEALTHY_COLA_SIZE}) واحصل على ${SHRINK_LABEL} مجاناً`,
     price: 599,
+    units: 36,
     originalPrice: 900,
     saving: 301,
     note: `2 ${SHRINK_LABEL} + ${SHRINK_LABEL} هدية — أقوى عرض الصيف.`,
@@ -71,6 +77,7 @@ const bundles = [
     badge: '🎁 عرض خاص',
     description: `12 عبوة Healthy Cola (${HEALTHY_COLA_SIZE} · ${SHRINK_LABEL}) + 6 قطع هدية من اختيارك`,
     price: 299,
+    units: 18,
     originalPrice: 450,
     saving: 151,
     note: `${SHRINK_LABEL} + هدية من اختيارك — أفضل قيمة.`,
@@ -85,6 +92,7 @@ const bundles = [
     badge: 'وفر أكتر 🔥',
     description: `12 عبوة Healthy Cola (${HEALTHY_COLA_SIZE} · ${SHRINK_LABEL})`,
     price: 229,
+    units: 12,
     originalPrice: 300,
     saving: 71,
     note: `${SHRINK_LABEL} — يكفي البيت طول الشهر.`,
@@ -183,91 +191,57 @@ function OrderTotalBreakdown({ subtotal, shippingFee, total, originalTotal, savi
   )
 }
 
+const LOCAL_FLAVOR_BUNDLES = LOCAL_BUNDLES.map(b => ({ ...b, flavorImages: { 'كولا': healthyCola, 'ليمون نعناع': healthyLemon } }))
+
 // ─── FLAVOR PICKER COMPONENT ─────────────────────────────────────────────────
 
-function FlavorPicker({ bundleId, qty, flavors, onChange, label, total: totalOverride, showHint = true }) {
-  const perUnit = bundleId === 'combo' ? 18 : bundleId === 'summer' ? 36 : 12
-  const total = totalOverride !== undefined ? totalOverride : perUnit * qty
-  const cola = flavors.cola ?? 0
-  const lemon = flavors.lemon ?? (total - cola)
+function distributeFlavors(options, total) {
+  return Object.fromEntries(options.map((f, i) => [f.id, Math.floor(total / options.length) + (i < total % options.length ? 1 : 0)]))
+}
 
-  const setCola = (val) => {
-    const newCola = Math.max(0, Math.min(total, val))
-    onChange({ cola: newCola, lemon: Math.max(0, total - newCola) })
-  }
-  const setLemon = (val) => {
-    const newLemon = Math.max(0, Math.min(total, val))
-    onChange({ cola: Math.max(0, total - newLemon), lemon: newLemon })
-  }
-  const setAll = (type) => {
-    if (type === 'cola') onChange({ cola: total, lemon: 0 })
-    else if (type === 'lemon') onChange({ cola: 0, lemon: total })
-    else {
-      const half = Math.floor(total / 2)
-      onChange({ cola: total - half, lemon: half })
+function describeFlavors(bundle, counts) {
+  return bundle.flavorOptions.filter(f => (counts[f.id] || 0) > 0).map(f => `${counts[f.id]} ${f.name}`).join(' + ')
+}
+
+function FlavorPicker({ units, qty, options, flavors, onChange, label }) {
+  const total = units * qty
+  const used = options.reduce((sum, f) => sum + (flavors[f.id] || 0), 0)
+  const adjust = (id, delta) => {
+    const next = Object.fromEntries(options.map(f => [f.id, flavors[f.id] || 0]))
+    if (delta < 0 && next[id] === 0) return
+    // With a complete distribution, transfer one bottle between visible flavors.
+    if (delta > 0 && used >= total) {
+      const donor = options.find(f => f.id !== id && next[f.id] > 0)
+      if (!donor) return
+      next[donor.id]--
+    } else if (delta < 0 && used === total && options.length > 1) {
+      next[options.find(f => f.id !== id).id]++
     }
+    next[id] += delta
+    onChange(next)
   }
-
-  return (
-    <div className="flavor-section">
-      <div className="flavor-header">
-        <h3 className="flavor-title">{label || 'اختار توزيع النكهات'}</h3>
-        <span className="flavor-badge">{total} عبوة · {HEALTHY_COLA_SIZE} / {HEALTHY_LEMON_SIZE}</span>
-      </div>
-      {showHint && (
-        <p className="flavor-hint">
-          يمكنك اختيار النكهات المفضلة بسهولة — اضغط «نص نص» للاختيار السريع. يمكن تعديل النكهات أثناء تأكيد الطلب.
-        </p>
-      )}
+  return <div className="flavor-section">
+    <div className="flavor-header"><h3 className="flavor-title">{label}</h3><span className="flavor-badge">{total} عبوة</span></div>
+    {options.length === 0 ? <p role="alert">النكهات غير متاحة حاليًا — اختار عرض تاني.</p> : <>
+      <p className="flavor-hint">اختار توزيع النكهات اللي يناسبك، والمجموع لازم يكون {total} عبوة.</p>
       <div className="flavor-quick-picks">
-        <button
-          type="button"
-          className={`fqp-btn ${cola === total ? 'fqp-active-cola' : ''}`}
-          onClick={() => setAll('cola')}
-        >🥤 كله كولا</button>
-        <button
-          type="button"
-          className={`fqp-btn fqp-btn--recommended ${cola === total - Math.floor(total / 2) && lemon === Math.floor(total / 2) ? 'fqp-active-half' : ''}`}
-          onClick={() => setAll('half')}
-        >⚖️ نص نص</button>
-        <button
-          type="button"
-          className={`fqp-btn ${lemon === total ? 'fqp-active-lemon' : ''}`}
-          onClick={() => setAll('lemon')}
-        >🍋 كله ليمون</button>
+        {options.map(f => <button key={f.id} type="button" className="fqp-btn" onClick={() => onChange(Object.fromEntries(options.map(x => [x.id, x.id === f.id ? total : 0])))}>كله {f.name}</button>)}
+        {options.length > 1 && <button type="button" className="fqp-btn fqp-btn--recommended" onClick={() => onChange(distributeFlavors(options, total))}>{options.length === 2 ? '⚖️ نص نص' : '⚖️ توزيع بالتساوي'}</button>}
       </div>
       <div className="flavor-grid">
-        <div className={`flavor-card ${cola > 0 ? 'active-cola' : ''}`}>
-          <div className="flavor-emoji">🥤</div>
-          <div className="flavor-name">كولا</div>
+        {options.map(f => <div key={f.id} className={`flavor-card ${flavors[f.id] > 0 ? 'active-cola' : ''}`}>
+          {f.image ? <img src={f.image} alt={f.name} width="64" height="64" style={{ objectFit: 'contain' }} /> : <div className="flavor-emoji">🥤</div>}
+          <div className="flavor-name">{f.name}</div>
           <div className="flavor-counter">
-            <button type="button" className="fctr-btn" aria-label="زيادة كولا" onClick={() => setCola(cola + 1)} disabled={cola === total}>+</button>
-            <span className="fctr-val">{cola}</span>
-            <button type="button" className="fctr-btn" aria-label="تقليل كولا" onClick={() => setCola(cola - 1)} disabled={cola === 0}>−</button>
+            <button type="button" className="fctr-btn" aria-label={`زيادة ${f.name}`} onClick={() => adjust(f.id, 1)} disabled={flavors[f.id] >= total}>+</button>
+            <span className="fctr-val">{flavors[f.id] || 0}</span>
+            <button type="button" className="fctr-btn" aria-label={`تقليل ${f.name}`} onClick={() => adjust(f.id, -1)} disabled={!flavors[f.id] || options.length === 1}>−</button>
           </div>
-        </div>
-        <div className={`flavor-card ${lemon > 0 ? 'active-lemon' : ''}`}>
-          <div className="flavor-emoji">🍋</div>
-          <div className="flavor-name">ليمون نعناع</div>
-          <div className="flavor-counter">
-            <button type="button" className="fctr-btn" aria-label="زيادة ليمون" onClick={() => setLemon(lemon + 1)} disabled={lemon === total}>+</button>
-            <span className="fctr-val">{lemon}</span>
-            <button type="button" className="fctr-btn" aria-label="تقليل ليمون" onClick={() => setLemon(lemon - 1)} disabled={lemon === 0}>−</button>
-          </div>
-        </div>
+        </div>)}
       </div>
-      <div className="flavor-bar-wrap">
-        <div className="flavor-bar">
-          <div className="flavor-bar-cola" style={{ width: `${(cola / total) * 100}%` }} />
-          <div className="flavor-bar-lemon" style={{ width: `${(lemon / total) * 100}%` }} />
-        </div>
-        <div className="flavor-bar-labels">
-          <span className="fbl cola">{cola} كولا</span>
-          {lemon > 0 && <span className="fbl lemon">{lemon} ليمون نعناع</span>}
-        </div>
-      </div>
-    </div>
-  )
+      <p className="flavor-hint" role="status">{used === total ? 'تم توزيع كل العبوات ✓' : `باقي ${total - used} عبوة للتوزيع`}</p>
+    </>}
+  </div>
 }
 
 // ─── ORDER FORM ───────────────────────────────────────────────────────────────
@@ -286,11 +260,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
   const purchaseSubmitLock = useRef(false)
   const [touched, setTouched] = useState({})
   const [itemFlavors, setItemFlavors] = useState(() =>
-    initialItems.map(item => {
-      const perUnit = item.bundle.id === 'combo' ? 18 : item.bundle.id === 'summer' ? 36 : 12
-      const base = { cola: Math.floor((perUnit * item.qty) / 2) }
-      return base
-    })
+    initialItems.map(item => distributeFlavors(item.bundle.flavorOptions, unitsPerBundle(item.bundle) * item.qty))
   )
 
   const removeItem = (i) => {
@@ -321,11 +291,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
 
   const buildOrderSummary = () =>
     cartItems.map((item, i) => {
-      const perUnit = item.bundle.id === 'combo' ? 18 : item.bundle.id === 'summer' ? 36 : 12
-      const total = perUnit * item.qty
-      const cola = itemFlavors[i].cola ?? 0
-      const lemon = itemFlavors[i].lemon ?? (total - cola)
-      const summary = `${item.bundle.name} ×${item.qty} (${cola} كولا + ${lemon} ليمون)`
+      const summary = `${item.bundle.name} ×${item.qty} (${describeFlavors(item.bundle, itemFlavors[i])})`
       return summary
     }).join(' | ')
 
@@ -339,6 +305,8 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
     if (purchaseSubmitLock.current) return
 
     setTouched({ name: true, phone: true, gov: true, address: true })
+    if (cartItems.some((item, i) => item.bundle.flavorsAvailable === false ||
+      item.bundle.flavorOptions.reduce((sum, f) => sum + (itemFlavors[i][f.id] || 0), 0) !== unitsPerBundle(item.bundle) * item.qty)) return
     const currentErrors = {
       name: !name.trim() ? 'الاسم مطلوب' : '',
       phone: !phone.trim() ? 'رقم الموبايل مطلوب' : !/^01[0-9]{9}$/.test(phone.trim()) ? 'رقم غير صحيح، مثال: 01XXXXXXXXX' : '',
@@ -438,10 +406,6 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
             </div>
             <div className="success-card-divider" />
             {cartItems.map((item, i) => {
-              const perUnit = item.bundle.id === 'combo' ? 18 : item.bundle.id === 'summer' ? 36 : 12
-              const total = perUnit * item.qty
-              const cola = itemFlavors[i].cola ?? 0
-              const lemon = itemFlavors[i].lemon ?? (total - cola)
               return (
                 <div key={i}>
                   <div className="success-card-row">
@@ -450,7 +414,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
                   </div>
                   <div className="success-card-row">
                     <span className="success-label">النكهات</span>
-                    <span className="success-val">{cola} كولا + {lemon} ليمون</span>
+                    <span className="success-val">{describeFlavors(item.bundle, itemFlavors[i])}</span>
                   </div>
                   {i < cartItems.length - 1 && <div className="success-card-divider" />}
                 </div>
@@ -503,7 +467,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
         <div key={i}>
           <div className="confirm-summary" style={{ '--accent': item.bundle.accent }}>
             <div className="confirm-img">
-              <img src={item.bundle.image} alt={`صورة ${item.bundle.name} في الطلب`} />
+              <img src={item.bundle.image || healthyCola} alt={`صورة ${item.bundle.name} في الطلب`} />
             </div>
             <div className="confirm-info">
               <div className="confirm-info-top">
@@ -522,14 +486,11 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
             </div>
           </div>
           <FlavorPicker
-            bundleId={item.bundle.id}
+            options={item.bundle.flavorOptions}
+            units={unitsPerBundle(item.bundle)}
             qty={item.qty}
             flavors={itemFlavors[i]}
-            label={
-              item.bundle.id === 'combo' ? 'اختار توزيع نكهات الـ 18 عبوة (12 + 6 هدية)' :
-              item.bundle.id === 'summer' ? 'اختار توزيع نكهات الـ 36 عبوة (24 + 12 هدية)' :
-              undefined
-            }
+            label={`اختار توزيع نكهات الـ ${unitsPerBundle(item.bundle) * item.qty} عبوة`}
             onChange={(f) => setItemFlavors(prev => prev.map((x, idx) => idx === i ? { ...x, ...f } : x))}
           />
         </div>
@@ -586,22 +547,23 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
 
 // ─── LANDING (SCROLL PAGE) ───────────────────────────────────────────────────
 
-function Landing({ onConfirm }) {
+function Landing({ bundles, offersReady, onConfirm }) {
   const [openFaq, setOpenFaq] = useState(null)
   const [cart, setCart] = useState({})
   // Prevents AddToCart from firing twice if both checkout buttons are tapped
   // rapidly, or if onConfirm is called before the flow state transitions.
   const checkoutLock = useRef(false)
 
-  const cartCount = Object.values(cart).reduce((s, q) => s + q, 0)
+  const cartCount = bundles.reduce((s, b) => s + (b.flavorsAvailable === false ? 0 : cart[b.id] || 0), 0)
   const cartItems = bundles
-    .filter(b => (cart[b.id] || 0) > 0)
+    .filter(b => b.flavorsAvailable !== false && (cart[b.id] || 0) > 0)
     .map(b => ({ bundle: b, qty: cart[b.id] }))
   const cartCheckoutTotal = calcOrderTotal(cartItems)
   const cartShipping = calcShipping(cartItems)
 
-  const addToCart = (bundleId) => setCart(c => ({ ...c, [bundleId]: (c[bundleId] || 0) + 1 }))
+  const addToCart = (bundleId) => bundles.some(b => b.id === bundleId && b.flavorsAvailable !== false) && setCart(c => ({ ...c, [bundleId]: (c[bundleId] || 0) + 1 }))
   const setQty = (bundleId, val) => {
+    if (!bundles.some(b => b.id === bundleId && b.flavorsAvailable !== false)) return
     if (val <= 0) {
       setCart(c => { const n = { ...c }; delete n[bundleId]; return n })
     } else {
@@ -610,9 +572,10 @@ function Landing({ onConfirm }) {
   }
 
   const handleCheckout = () => {
+    if (!offersReady) return
     if (checkoutLock.current) return
     const items = bundles
-      .filter(b => (cart[b.id] || 0) > 0)
+      .filter(b => b.flavorsAvailable !== false && (cart[b.id] || 0) > 0)
       .map(b => ({ bundle: b, qty: cart[b.id] }))
     if (items.length === 0) return
     checkoutLock.current = true
@@ -628,13 +591,13 @@ function Landing({ onConfirm }) {
       {cartCount > 0 && (
         <div className="sticky-cart-bar">
           <div className="sticky-cart-items">
-            {bundles.filter(b => (cart[b.id] || 0) > 0).map(b => (
+            {bundles.filter(b => b.flavorsAvailable !== false && (cart[b.id] || 0) > 0).map(b => (
               <span key={b.id} className="sticky-cart-chip" style={{ '--accent': b.accent }}>
                 {b.name} ×{cart[b.id]}
               </span>
             ))}
           </div>
-          <button className="sticky-cart-btn" onClick={handleCheckout}>
+          <button className="sticky-cart-btn" disabled={!offersReady} onClick={handleCheckout}>
             أكمل الطلب — {cartCheckoutTotal} ج.م {cartShipping === 0 ? '· توصيل مجاني 🚚' : ''} ←
           </button>
         </div>
@@ -732,9 +695,10 @@ function Landing({ onConfirm }) {
           <p>كل العروض والدفع عند الاستلام 💳 · {SHIPPING_ONCE_LABEL}</p>
           <DeliveryHighlight compact />
         </div>
+        {!offersReady && <p role="status">جاري تحديث العروض…</p>}
         <div className="bundle-list">
           {bundles.map((bundle) => {
-            const qty = cart[bundle.id] || 0
+            const qty = bundle.flavorsAvailable === false ? 0 : cart[bundle.id] || 0
             const inCart = qty > 0
             const selectBundle = () => {
               if (!inCart) addToCart(bundle.id)
@@ -747,6 +711,7 @@ function Landing({ onConfirm }) {
                 tabIndex={0}
                 aria-pressed={inCart}
                 aria-label={`${bundle.name}${inCart ? ' — مختار في السلة' : ' — اضغط لاختيار العرض'}`}
+                aria-disabled={bundle.flavorsAvailable === false}
                 className={`bundle-row bundle-row-${bundle.id} ${inCart ? 'selected' : ''}`}
                 style={{ '--accent': bundle.accent }}
                 onClick={selectBundle}
@@ -760,12 +725,12 @@ function Landing({ onConfirm }) {
                 {inCart && <div className="selected-check">✓</div>}
                 {bundle.badge && <div className="bundle-row-badge">{bundle.badge}</div>}
                 <div className="bundle-row-img">
-                  <img src={bundle.image} alt={`صورة ${bundle.name} — Healthy Cola`} loading="lazy" />
+                  <img src={bundle.image || healthyCola} alt={`صورة ${bundle.name} — Healthy Cola`} loading="lazy" />
                 </div>
                 <div className="bundle-row-info">
                   <h3>{bundle.name}</h3>
                   <p>{bundle.description}</p>
-                  <p className="bundle-row-note">{bundle.note}</p>
+                  <p className="bundle-row-note">{bundle.flavorsAvailable === false ? 'النكهات غير متاحة حاليًا' : bundle.note}</p>
                   <p className={`delivery-tag ${bundle.freeShipping ? 'delivery-tag--free' : 'delivery-tag--paid'}`}>
                     {bundle.deliveryNote || (bundle.freeShipping ? '🚚 التوصيل مجاني' : '🚚 التوصيل 50 جنيه')}
                   </p>
@@ -782,7 +747,7 @@ function Landing({ onConfirm }) {
                         <button type="button" className="qty-btn" aria-label="زيادة الكمية" onClick={() => setQty(bundle.id, qty + 1)}>+</button>
                       </div>
                     ) : (
-                      <button type="button" className="add-to-cart-btn" onClick={() => addToCart(bundle.id)}>
+                      <button disabled={bundle.flavorsAvailable === false} type="button" className="add-to-cart-btn" onClick={() => addToCart(bundle.id)}>
                         🛒 أضف للسلة
                       </button>
                     )}
@@ -794,7 +759,7 @@ function Landing({ onConfirm }) {
         </div>
         <OfferTrustPills />
         {cartCount > 0 && (
-          <button type="button" className="next-btn landing-next-btn" onClick={handleCheckout}>
+          <button type="button" className="next-btn landing-next-btn" disabled={!offersReady} onClick={handleCheckout}>
             أكمل الطلب ({cartCount} قطعة — {cartCheckoutTotal} ج.م {cartShipping === 0 ? '· التوصيل مجاني 🚚' : 'شامل الشحن'}) ←
           </button>
         )}
@@ -883,6 +848,7 @@ function Landing({ onConfirm }) {
 
 function App() {
   const [flow, setFlow] = useState('landing')
+  const { bundles, ready } = useOffers('cola', LOCAL_FLAVOR_BUNDLES)
   const [cartItems, setCartItems] = useState([])
 
   // One ViewContent per page load on both channels with a shared event_id.
@@ -903,6 +869,8 @@ function App() {
   if (flow === 'landing') {
     return (
       <Landing
+        bundles={bundles}
+        offersReady={ready}
         onConfirm={(items) => {
           setCartItems(items)
           setFlow('form')
