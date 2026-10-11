@@ -139,3 +139,16 @@ npm run build
 - تأكد أن Google Apps Script منشور ومتاح لأي شخص.
 - لا تضع Meta access token داخل كود React أو أي ملف يتم رفعه للمتصفح.
 - بعد أي تعديل على Google Apps Script، اعمل Deploy new version.
+
+## Offers dashboard integration
+
+- Offers are read from the shared Supabase `offers` table with `site = cola` and `is_active = true`, ordered by `sort_order`.
+- Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` for local development and in the hosting build environment for deployment. Use the same public configuration as the dashboard. Rebuild after changing these variables.
+- Seed the cola offers before deploying. Existing slugs are `summer`, `combo`, and `month`.
+- Prices, visibility, order, images and unit counts refresh when the page is reopened or reloaded. Checkout flavor counts use the offer unit count multiplied by quantity.
+- Cached raw rows or local offers are used when the request fails. A successful empty response shows no offers. Existing offer images use the current build assets; new offers without an uploaded image use the cola product image.
+- Paid shipping is still 50 EGP. Shipping text and FAQ text are maintained in code. Flavor choices are managed per offer in the dashboard.
+- The order delivery and Meta tracking integration is unchanged. Verify receipt in the actual order sheet after deployment; the success screen alone does not verify receipt.
+
+### Managed flavors
+Names, images, order and visibility are managed per offer in the dashboard. `src/flavorCatalog.js` defines the shared JSON contract and legacy defaults. Hidden flavors are excluded from selection and order summaries; a required product group with no visible flavors makes its offer unavailable. Changes take effect on reload; offline fallback uses the last cached catalog. Hero/FAQ/description copy remains manually maintained. No SQL migration is required.
