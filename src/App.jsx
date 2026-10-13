@@ -548,10 +548,10 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
 
 // ─── LANDING (SCROLL PAGE) ───────────────────────────────────────────────────
 
-function Landing({ bundles, offersReady, onConfirm }) {
+function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
   const content = usePageContent()
   const [openFaq, setOpenFaq] = useState(null)
-  const [cart, setCart] = useState({})
+  const [cart, setCart] = useState(initialCart)
   // Prevents AddToCart from firing twice if both checkout buttons are tapped
   // rapidly, or if onConfirm is called before the flow state transitions.
   const checkoutLock = useRef(false)
@@ -912,3 +912,9 @@ function App() {
 }
 
 export default App
+
+export function LandingPreview({ showCart }) {
+  const { bundles, ready } = useOffers('cola', LOCAL_FLAVOR_BUNDLES)
+  const first = bundles.find(bundle => bundle.flavorsAvailable !== false)
+  return <Landing key={first?.id || 'empty'} bundles={bundles} offersReady={ready} onConfirm={() => {}} initialCart={showCart && first ? { [first.id]: 1 } : {}} />
+}
