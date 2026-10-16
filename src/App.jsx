@@ -1,4 +1,5 @@
-﻿import { usePageContent } from './PageContent.jsx'
+﻿import { shippingLabel, shippingSummary, cartShipping } from './shipping.js'
+import { usePageContent } from './PageContent.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { buildPurchaseMeta, markOrderPurchaseSent, sendServerEvent, trackBrowserEventOnce, trackMetaEvent, wasOrderPurchaseSent } from './metaTracking'
 import { CheckCircle2, Phone, Mail } from 'lucide-react'
@@ -22,9 +23,8 @@ const HEALTHY_LEMON_SIZE = `${HEALTHY_LEMON_VOLUME_ML} مل`
 /** ملخص الأحجام الرسمية للطلب (كولا + ليمون نعناع) */
 const PRODUCT_SIZES_LABEL = `كولا ${HEALTHY_COLA_SIZE} · ليمون نعناع ${HEALTHY_LEMON_SIZE}`
 
-const DELIVERY_FEE = 50
 const SHRINK_LABEL = 'شرنك (12 عبوة)'
-const SHIPPING_ONCE_LABEL = 'التوصيل مجاني لعرض الصيف والكومبو · عرض الشرنك + 50 ج شحن'
+const SHIPPING_ONCE_LABEL = 'أعلى رسوم شحن تُحسب مرة واحدة على الطلب'
 const DELIVERY_HOURS_LABEL = 'التوصيل خلال ساعات من تأكيد الطلب'
 
 /** ثقة الشراء — تظهر مرة واحدة أسفل العروض فقط */
@@ -33,19 +33,14 @@ const offerTrustBadges = [
   { icon: '📞', label: 'تأكيد الطلب سريع' },
 ]
 
-// الشحن يُطبَّق مرة واحدة لكل طلب — مجاني تماماً لو السلة كلها عروض بتوصيل مجاني،
-// و50 ج مرة واحدة لو السلة فيها عرض الشرنك (أبو 229).
+// Highest applicable shipping fee is charged once, regardless of quantity.
 const calcItemsSubtotal = (items) =>
   items.reduce((sum, item) => sum + item.bundle.price * item.qty, 0)
 
 const calcItemsOriginalSubtotal = (items) =>
   items.reduce((sum, item) => sum + item.bundle.originalPrice * item.qty, 0)
 
-const calcShipping = (items) => {
-  if (items.length === 0) return 0
-  const hasPaidShipping = items.some((item) => !item.bundle.freeShipping)
-  return hasPaidShipping ? DELIVERY_FEE : 0
-}
+const calcShipping = (items) => cartShipping(items, 'cola').fee
 
 /** total = مجموع المنتجات + شحن واحد فقط (أو مجاني) */
 const calcOrderTotal = (items) => calcItemsSubtotal(items) + calcShipping(items)
@@ -126,7 +121,7 @@ const faqs = [
   { q: 'إيه حجم عبوة Healthy Cola؟', a: `نكهة الكولا ${HEALTHY_COLA_SIZE}، ونكهة ليمون نعناع ${HEALTHY_LEMON_SIZE}.` },
   { q: 'إيه حجم زجاجة ليمون نعناع؟', a: `حجم الزجاجة الرسمي ${HEALTHY_LEMON_SIZE}.` },
   { q: 'إيه معنى شرنك؟', a: `${SHRINK_LABEL} — أي 12 عبوة في العرض.` },
-  { q: 'التوصيل مجاني ولا بفلوس؟', a: 'عرض الصيف وعرض الكومبو التوصيل فيهم مجاني تماماً. عرض الشرنك (229) بس هو اللي عليه شحن 50 ج مرة واحدة على الطلب.' },
+  { q: 'التوصيل مجاني ولا بفلوس؟', a: SHIPPING_ONCE_LABEL },
   { q: 'الشحن بيتكرر على كل باقة؟', a: 'لا، الشحن مرة واحدة بس على الطلب كله — ولو طلبك كله عروض بتوصيل مجاني مش هتدفع شحن خالص.' },
   { q: 'التوصيل بياخد قد إيه؟', a: 'فريق Healthy Cola بيتواصل سريعاً لتأكيد الطلب، والتوصيل يبدأ خلال ساعات بعد التأكيد. معظم الطلبات تصل في نفس اليوم حسب المنطقة.' },
   { q: 'هل Healthy Cola فيها سكر؟', a: 'لا، المنتج 0 سكر ومحلى بالاستيفيا بدل السكر التقليدي.' },
@@ -482,7 +477,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
               </div>
               <div className="confirm-badges">
                 <span className="confirm-badge green">وفرت {item.bundle.saving * item.qty} ج.م</span>
-                <span className={`confirm-badge ${item.bundle.freeShipping ? 'green' : 'gray'}`}>{item.bundle.freeShipping ? '🚚 توصيل مجاني' : '🚚 التوصيل 50 ج'}</span>
+                <span className={`confirm-badge ${item.bundle.freeShipping ? 'green' : 'gray'}`}>{shippingLabel(item.bundle, 'cola')}</span>
               </div>
             </div>
           </div>
@@ -624,7 +619,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
             من غير سكر… من غير سعرات حرارية… ومن غير ما تبوّظ نظامك
           </p>
           <DeliveryHighlight />
-          <p className="hero-shipping-note">{SHIPPING_ONCE_LABEL}</p>
+          <p className="hero-shipping-note">{shippingSummary(bundles, 'cola')}</p>
           <div className="perks-wrap">
             {heroPerks.map((f) => (
               <span className="perk" key={f.label}>
@@ -694,7 +689,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
         <div className="section-head light">
           <p className="eyebrow-pill light">اختار العرض المناسب لك 👇</p>
           <h2>الباقة المناسبة ليك</h2>
-          <p>كل العروض والدفع عند الاستلام 💳 · {SHIPPING_ONCE_LABEL}</p>
+          <p>كل العروض والدفع عند الاستلام 💳 · {shippingSummary(bundles, 'cola')}</p>
           <DeliveryHighlight compact />
         </div>
         {!offersReady && <p role="status">جاري تحديث العروض…</p>}
@@ -714,6 +709,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
                 aria-pressed={inCart}
                 aria-label={`${bundle.name}${inCart ? ' — مختار في السلة' : ' — اضغط لاختيار العرض'}`}
                 aria-disabled={bundle.flavorsAvailable === false}
+                data-offer-id={bundle.id}
                 className={`bundle-row bundle-row-${bundle.id} ${inCart ? 'selected' : ''}`}
                 style={{ '--accent': bundle.accent }}
                 onClick={selectBundle}
@@ -734,7 +730,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
                   <p>{bundle.description}</p>
                   <p className="bundle-row-note">{bundle.flavorsAvailable === false ? 'النكهات غير متاحة حاليًا' : bundle.note}</p>
                   <p className={`delivery-tag ${bundle.freeShipping ? 'delivery-tag--free' : 'delivery-tag--paid'}`}>
-                    {bundle.deliveryNote || (bundle.freeShipping ? '🚚 التوصيل مجاني' : '🚚 التوصيل 50 جنيه')}
+                    {shippingLabel(bundle, 'cola')}
                   </p>
                   <div className="bundle-row-price">
                     <strong>{bundle.price * Math.max(qty, 1)} ج.م</strong>
@@ -823,7 +819,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
                 <span>{item.q}</span>
                 <span className="faq-arrow" aria-hidden="true">{openFaq === i ? '▲' : '▼'}</span>
               </button>
-              {openFaq === i && <p className="faq-a">{item.a}</p>}
+              {openFaq === i && <p className="faq-a">{item.q === 'التوصيل مجاني ولا بفلوس؟' ? bundles.map(bundle => `${bundle.name}: ${shippingLabel(bundle, 'cola')}`).join(' · ') + ' — ' + SHIPPING_ONCE_LABEL : item.a}</p>}
             </div>
           ))}
         </div>
@@ -913,8 +909,8 @@ function App() {
 
 export default App
 
-export function LandingPreview({ showCart }) {
+export function LandingPreview({ showCart, focusSlug }) {
   const { bundles, ready } = useOffers('cola', LOCAL_FLAVOR_BUNDLES)
-  const first = bundles.find(bundle => bundle.flavorsAvailable !== false)
+  const first = focusSlug ? bundles.find(bundle => bundle.id === focusSlug && bundle.flavorsAvailable !== false) : bundles.find(bundle => bundle.flavorsAvailable !== false)
   return <Landing key={first?.id || 'empty'} bundles={bundles} offersReady={ready} onConfirm={() => {}} initialCart={showCart && first ? { [first.id]: 1 } : {}} />
 }
