@@ -2222,27 +2222,19 @@ body {
 
 .flavor-line {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 12px;
-  overflow-x: auto;
-  flex-wrap: nowrap;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.flavor-line::-webkit-scrollbar {
-  display: none;
 }
 
 .flavor-pill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  flex: 0 0 auto;
-  padding: 4px 4px 4px 10px;
+  padding: 5px 6px 5px 12px;
   border: 1.5px solid #e5e7eb;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: #fff;
   transition: border-color 0.2s, background 0.2s;
 }
@@ -2368,10 +2360,6 @@ body {
 
   .flavor-presets {
     grid-template-columns: 1fr;
-  }
-
-  .flavor-line {
-    gap: 6px;
   }
 }
 
