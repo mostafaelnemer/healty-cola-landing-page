@@ -2244,6 +2244,26 @@ body {
   background: rgba(107, 33, 168, 0.06);
 }
 
+.flavor-pill-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.flavor-pill-img {
+  width: 18px;
+  height: 30px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  flex: 0 0 auto;
+}
+
+.flavor-pill-emoji {
+  font-size: 1rem;
+  flex: 0 0 auto;
+}
+
 .flavor-pill-name {
   font-size: 0.78rem;
   font-weight: 700;

@@ -234,7 +234,10 @@ function FlavorPicker({ units, qty, options, flavors, onChange, label }) {
       </div>
       <div className="flavor-line">
         {options.map(f => <div key={f.id} className={`flavor-pill ${flavors[f.id] > 0 ? 'active-cola' : ''}`}>
-          <span className="flavor-pill-name">{f.name}</span>
+          <span className="flavor-pill-info">
+            {f.image ? <img src={f.image} alt={`كانز ${f.name}`} className="flavor-pill-img" loading="lazy" /> : <span className="flavor-pill-emoji">🥤</span>}
+            <span className="flavor-pill-name">{f.name}</span>
+          </span>
           <div className="flavor-counter">
             <button type="button" className="fctr-btn" aria-label={`زيادة ${f.name}`} onClick={() => adjust(f.id, 1)} disabled={flavors[f.id] >= total}>+</button>
             <span className="fctr-val">{flavors[f.id] || 0}</span>
