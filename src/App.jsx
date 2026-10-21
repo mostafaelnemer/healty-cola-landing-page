@@ -232,10 +232,9 @@ function FlavorPicker({ units, qty, options, flavors, onChange, label }) {
         {options.map(f => <button key={f.id} type="button" className="fqp-btn" onClick={() => onChange(Object.fromEntries(options.map(x => [x.id, x.id === f.id ? total : 0])))}>كله {f.name}</button>)}
         {options.length > 1 && <button type="button" className="fqp-btn fqp-btn--recommended" onClick={() => onChange(distributeFlavors(options, total))}>{options.length === 2 ? '⚖️ نص نص' : '⚖️ توزيع بالتساوي'}</button>}
       </div>
-      <div className="flavor-grid">
-        {options.map(f => <div key={f.id} className={`flavor-card ${flavors[f.id] > 0 ? 'active-cola' : ''}`}>
-          {f.image ? <img src={f.image} alt={`كانز ${f.name}`} width="64" height="100" style={{ objectFit: 'contain' }} /> : <div className="flavor-emoji">🥤</div>}
-          <div className="flavor-name">{f.name}</div>
+      <div className="flavor-line">
+        {options.map(f => <div key={f.id} className={`flavor-pill ${flavors[f.id] > 0 ? 'active-cola' : ''}`}>
+          <span className="flavor-pill-name">{f.name}</span>
           <div className="flavor-counter">
             <button type="button" className="fctr-btn" aria-label={`زيادة ${f.name}`} onClick={() => adjust(f.id, 1)} disabled={flavors[f.id] >= total}>+</button>
             <span className="fctr-val">{flavors[f.id] || 0}</span>
@@ -698,22 +697,14 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
         </div>
       </section>
 
-      <section className="section flavors-section" id="flavors-section">
-        <div className="section-head">
-          <p className="eyebrow-pill">6 نكهات كانز</p>
-          <h2>اختار نكهتك المفضلة</h2>
-          <p>كل الكانزات 250 مل — بدون سكر وبدون سعرات.</p>
-        </div>
-        <div className="flavor-showcase-grid">
+      <section className="flavors-strip-section" id="flavors-section" aria-label="نكهات Healthy Cola">
+        <div className="flavors-strip">
+          <span className="flavors-strip-label">6 نكهات:</span>
           {flavorShowcase.map((flavor) => (
-            <div className="flavor-showcase-card" key={flavor.name} style={{ '--flavor-accent': flavor.accent }}>
-              <div className="flavor-showcase-img">
-                <img src={flavor.image} alt={`كانز Healthy Cola ${flavor.name}`} loading="lazy" />
-              </div>
-              <h3>{flavor.name}</h3>
-              <span className="flavor-showcase-en">{flavor.en}</span>
-              <p>{flavor.desc}</p>
-            </div>
+            <span className="flavor-chip" key={flavor.name} style={{ '--flavor-accent': flavor.accent }}>
+              <img src={flavor.image} alt={`كانز Healthy Cola ${flavor.name}`} loading="lazy" />
+              {flavor.name}
+            </span>
           ))}
         </div>
       </section>

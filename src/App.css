@@ -565,83 +565,73 @@ body {
   line-height: 1.6;
 }
 
-/* ─── FLAVOR SHOWCASE ──────────────────────────────────────────────────────── */
-.flavors-section {
+/* ─── FLAVOR STRIP ─────────────────────────────────────────────────────────── */
+.flavors-strip-section {
   background: linear-gradient(180deg, #fff 0%, #faf5ff 100%);
+  padding: 18px 16px;
 }
 
-.flavor-showcase-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+.flavors-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   max-width: 1100px;
   margin: 0 auto;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-@media (min-width: 700px) {
-  .flavor-showcase-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.flavors-strip::-webkit-scrollbar {
+  display: none;
 }
 
-@media (min-width: 1100px) {
-  .flavor-showcase-grid {
-    grid-template-columns: repeat(6, 1fr);
-  }
+.flavors-strip-label {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-soft);
+  white-space: nowrap;
 }
 
-.flavor-showcase-card {
-  background: #fff;
+.flavor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 4px 10px 4px 6px;
   border: 1.5px solid #ede9fe;
-  border-radius: var(--radius);
-  padding: 18px 12px;
-  text-align: center;
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-}
-
-.flavor-showcase-card:hover {
-  transform: translateY(-6px);
-  border-color: var(--flavor-accent);
-  box-shadow: 0 16px 34px rgba(107, 33, 168, 0.12);
-}
-
-.flavor-showcase-img {
-  height: clamp(150px, 22vw, 190px);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  margin-bottom: 14px;
-}
-
-.flavor-showcase-img img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  mix-blend-mode: multiply;
-  filter: drop-shadow(0 10px 20px rgba(15, 23, 42, 0.12));
-}
-
-.flavor-showcase-card h3 {
-  font-size: 0.95rem;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.78rem;
   font-weight: 800;
   color: var(--text-main);
-  margin-bottom: 2px;
+  white-space: nowrap;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.flavor-showcase-en {
-  display: block;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--flavor-accent);
-  margin-bottom: 8px;
+.flavor-chip:hover {
+  border-color: var(--flavor-accent);
+  box-shadow: 0 4px 12px rgba(107, 33, 168, 0.1);
 }
 
-.flavor-showcase-card p {
-  font-size: 0.78rem;
-  color: var(--text-soft);
-  line-height: 1.55;
+.flavor-chip img {
+  width: 24px;
+  height: 40px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+
+@media (max-width: 699px) {
+  .flavors-strip-section {
+    padding: 14px 12px;
+  }
+
+  .flavors-strip {
+    justify-content: flex-start;
+  }
 }
 
 /* ─── SHOWCASE GRID ────────────────────────────────────────────────────────── */
@@ -2096,7 +2086,7 @@ body {
     linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border: 1.5px solid #dbe3ee;
   border-radius: var(--radius);
-  padding: 18px 20px 20px;
+  padding: 14px 16px 16px;
   margin-bottom: 20px;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
@@ -2112,7 +2102,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .flavor-title {
@@ -2176,14 +2167,21 @@ body {
 /* ─── FLAVOR QUICK PICKS ───────────────────────────────────────────────────── */
 .flavor-quick-picks {
   display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.flavor-quick-picks::-webkit-scrollbar {
+  display: none;
 }
 
 .fqp-btn {
-  flex: 1;
-  min-width: 80px;
+  flex: 0 0 auto;
+  min-width: 0;
   padding: 8px 10px;
   border: 1.5px solid #e5e7eb;
   border-radius: 50px;
@@ -2222,53 +2220,61 @@ body {
   color: #92400e;
 }
 
-.flavor-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.flavor-card {
-  border: 2px solid #e5e7eb;
-  border-radius: var(--radius-sm);
-  padding: 16px 10px;
-  text-align: center;
-  background: #fff;
-  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s;
-}
-
-.flavor-card.active-cola {
-  border-color: #6B21A8;
-  background: linear-gradient(180deg, rgba(107, 33, 168, 0.08), #fff);
-  box-shadow: 0 8px 20px rgba(107, 33, 168, 0.1);
-  transform: translateY(-1px);
-}
-
-.flavor-card.active-lemon {
-  border-color: #84cc16;
-  background: linear-gradient(180deg, rgba(217, 249, 157, 0.38), #fff);
-  box-shadow: 0 8px 20px rgba(101, 163, 13, 0.1);
-  transform: translateY(-1px);
-}
-
-.flavor-emoji {
+.flavor-line {
+  display: flex;
   align-items: center;
-  background: #f8fafc;
-  border-radius: 50%;
-  display: inline-flex;
-  font-size: 1.6rem;
-  height: 48px;
-  justify-content: center;
-  margin-bottom: 8px;
-  width: 48px;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.flavor-name {
-  font-size: 0.86rem;
+.flavor-line::-webkit-scrollbar {
+  display: none;
+}
+
+.flavor-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 4px 4px 4px 10px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.flavor-pill.active-cola {
+  border-color: #6B21A8;
+  background: rgba(107, 33, 168, 0.06);
+}
+
+.flavor-pill-name {
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--text-main);
-  margin-bottom: 12px;
+  white-space: nowrap;
+}
+
+.flavor-line .fctr-btn {
+  width: 26px;
+  height: 26px;
+  font-size: 0.95rem;
+}
+
+.flavor-line .fctr-val {
+  width: 26px;
+  font-size: 0.85rem;
+}
+
+.flavor-section .flavor-hint {
+  font-size: 0.72rem;
+  text-align: center;
+  margin: 0 0 8px;
+  padding: 5px 10px;
 }
 
 .flavor-counter {
@@ -2364,8 +2370,8 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .flavor-grid {
-    gap: 10px;
+  .flavor-line {
+    gap: 6px;
   }
 }
 
