@@ -1,6 +1,6 @@
 # Healthy Cola Landing Page
 
-Landing page عربية لمنتج Healthy Cola (350 مل) مبنية بـ React وVite. الصفحة تعرض العروض، تجمع بيانات الطلب، تبعت الطلب إلى Google Sheets عن طريق Google Apps Script، وتدعم Meta Pixel + Conversions API لتتبع حدث الشراء من المتصفح والسيرفر.
+Landing page عربية لمنتج Healthy Cola (كانز 250 مل — 6 نكهات) مبنية بـ React وVite. الصفحة تعرض العروض، تجمع بيانات الطلب، تبعت الطلب إلى Google Sheets عن طريق Google Apps Script، وتدعم Meta Pixel + Conversions API لتتبع حدث الشراء من المتصفح والسيرفر.
 
 ## Features
 
@@ -110,7 +110,7 @@ src/App.jsx
 - Flavors
 - Quantity
 - Price
-- Product Weight (اختياري — القيمة الافتراضية `350 مل`)
+- Product Weight (اختياري — القيمة الافتراضية `كانز 250 مل · 6 نكهات`)
 
 عمود `Bundle` يستقبل اسم الأوفر والكمية فقط، مثل:
 
@@ -144,7 +144,7 @@ npm run build
 
 - Offers are read from the shared Supabase `offers` table with `site = cola` and `is_active = true`, ordered by `sort_order`.
 - Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` for local development and in the hosting build environment for deployment. Use the same public configuration as the dashboard. Rebuild after changing these variables.
-- Seed the cola offers before deploying. Existing slugs are `summer`, `combo`, and `month`.
+- Seed the cola offers before deploying. Existing slugs are `summer` (30 cans) and `combo` (5 + 1 gift).
 - Prices, visibility, order, images and unit counts refresh when the page is reopened or reloaded. Checkout flavor counts use the offer unit count multiplied by quantity.
 - Cached raw rows or local offers are used when the request fails. A successful empty response shows no offers. Existing offer images use the current build assets; new offers without an uploaded image use the cola product image.
 - Paid shipping is still 50 EGP. Shipping text and FAQ text are maintained in code. Flavor choices are managed per offer in the dashboard.

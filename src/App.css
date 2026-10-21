@@ -258,7 +258,7 @@ body {
   z-index: 1;
 }
 
-/* ── each bottle wrapper — نفس ارتفاع عرض Healthy Cola الأصلي ── */
+/* ── each can wrapper — نفس ارتفاع عرض Healthy Cola الأصلي ── */
 .hero-can-item {
   position: relative;
   display: flex;
@@ -266,8 +266,8 @@ body {
   align-items: center;
   padding-bottom: 8px;
   --hero-bottle-w: clamp(150px, 17vw, 230px);
-  /* نسبة صورة healthy_cola.png الأصلية (250×912) */
-  --hero-bottle-h: calc(var(--hero-bottle-w) * 912 / 250);
+  /* نسبة صور الكانز الجديدة (900×1600) */
+  --hero-bottle-h: calc(var(--hero-bottle-w) * 1600 / 900);
 }
 
 .hero-can-item img {
@@ -279,7 +279,8 @@ body {
   object-position: bottom center;
   display: block;
   flex-shrink: 0;
-  filter: drop-shadow(0 14px 32px rgba(107, 33, 168, 0.35));
+  mix-blend-mode: multiply;
+  filter: drop-shadow(0 14px 32px rgba(107, 33, 168, 0.22));
   animation: float 4s ease-in-out infinite;
   position: relative;
   z-index: 2;
@@ -287,7 +288,7 @@ body {
 
 .hero-can-item.lemon img {
   animation-delay: 0.8s;
-  filter: drop-shadow(0 14px 32px rgba(132, 204, 22, 0.35));
+  filter: drop-shadow(0 14px 32px rgba(132, 204, 22, 0.22));
 }
 
 @keyframes float {
@@ -562,6 +563,85 @@ body {
   font-size: 0.88rem;
   color: var(--text-soft);
   line-height: 1.6;
+}
+
+/* ─── FLAVOR SHOWCASE ──────────────────────────────────────────────────────── */
+.flavors-section {
+  background: linear-gradient(180deg, #fff 0%, #faf5ff 100%);
+}
+
+.flavor-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (min-width: 700px) {
+  .flavor-showcase-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .flavor-showcase-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.flavor-showcase-card {
+  background: #fff;
+  border: 1.5px solid #ede9fe;
+  border-radius: var(--radius);
+  padding: 18px 12px;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.flavor-showcase-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--flavor-accent);
+  box-shadow: 0 16px 34px rgba(107, 33, 168, 0.12);
+}
+
+.flavor-showcase-img {
+  height: clamp(150px, 22vw, 190px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.flavor-showcase-img img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  filter: drop-shadow(0 10px 20px rgba(15, 23, 42, 0.12));
+}
+
+.flavor-showcase-card h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 2px;
+}
+
+.flavor-showcase-en {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--flavor-accent);
+  margin-bottom: 8px;
+}
+
+.flavor-showcase-card p {
+  font-size: 0.78rem;
+  color: var(--text-soft);
+  line-height: 1.55;
 }
 
 /* ─── SHOWCASE GRID ────────────────────────────────────────────────────────── */
@@ -1958,7 +2038,7 @@ body {
     min-width: 0;
     max-width: 50%;
     --hero-bottle-w: min(118px, 36vw);
-    --hero-bottle-h: calc(var(--hero-bottle-w) * 912 / 250);
+    --hero-bottle-h: calc(var(--hero-bottle-w) * 1600 / 900);
   }
 
   .hero-can-item img {

@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     price: price || '',
     flavors: flavors || '-',
     quantity: quantity || '1',
-    productWeight: productWeight || 'كولا 350 مل · ليمون نعناع 350 مل',
+    productWeight: productWeight || 'كانز 250 مل · 6 نكهات',
   })
   fetch(`${SHEET_URL}?${params.toString()}`).catch(() => {})
 }

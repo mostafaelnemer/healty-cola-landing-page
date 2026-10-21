@@ -3,27 +3,27 @@ import { usePageContent } from './PageContent.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { buildPurchaseMeta, markOrderPurchaseSent, sendServerEvent, trackBrowserEventOnce, trackMetaEvent, wasOrderPurchaseSent } from './metaTracking'
 import { CheckCircle2, Phone, Mail } from 'lucide-react'
-import healthyCola from './assets/healthy_cola.png'
-import healthyLemon from './assets/healthy_lemon.png'
+import canCola from './assets/cola.jpeg'
+import canPineapple from './assets/pineapple.jpeg'
+import canLemonMint from './assets/lemon_mint.jpeg'
+import canOrange from './assets/orange.jpeg'
+import canGreenApple from './assets/green_apple.jpeg'
+import canMixBerries from './assets/mix_berries.jpeg'
 import logo from './assets/logo.png'
-import offerSummer from './assets/summer.jpeg'
-import offerShrink from './assets/shrink.jpeg'
-import offerCombo from './assets/combo.jpeg'
+import offerThirtyCans from './assets/offer_30_cans.jpeg'
+import offerFivePlusOne from './assets/offer_5_plus_1.jpeg'
 import { useOffers } from './useOffers'
 import './App.css'
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
-const HEALTHY_COLA_VOLUME_ML = 350
-const HEALTHY_COLA_SIZE = `${HEALTHY_COLA_VOLUME_ML} مل`
+const CAN_VOLUME_ML = 250
+const CAN_SIZE = `${CAN_VOLUME_ML} مل`
+const FLAVOR_COUNT_LABEL = '6 نكهات'
 
-const HEALTHY_LEMON_VOLUME_ML = 350
-const HEALTHY_LEMON_SIZE = `${HEALTHY_LEMON_VOLUME_ML} مل`
+/** ملخص الأحجام الرسمية للطلب — كانز 250 مل بست نكهات */
+const PRODUCT_SIZES_LABEL = `كانز ${CAN_SIZE} · ${FLAVOR_COUNT_LABEL}`
 
-/** ملخص الأحجام الرسمية للطلب (كولا + ليمون نعناع) */
-const PRODUCT_SIZES_LABEL = `كولا ${HEALTHY_COLA_SIZE} · ليمون نعناع ${HEALTHY_LEMON_SIZE}`
-
-const SHRINK_LABEL = 'شرنك (12 عبوة)'
 const SHIPPING_ONCE_LABEL = 'أعلى رسوم شحن تُحسب مرة واحدة على الطلب'
 const DELIVERY_HOURS_LABEL = 'التوصيل خلال ساعات من تأكيد الطلب'
 
@@ -54,47 +54,34 @@ const unitsPerBundle = (bundle) => Math.max(1, Number(bundle?.units) || 12)
 const LOCAL_BUNDLES = [
   {
     id: 'summer',
-    name: 'عرض الصيف',
-    badge: '⭐ الأكثر طلبًا',
-    description: `اشتري 2 ${SHRINK_LABEL} Healthy Cola (${HEALTHY_COLA_SIZE}) واحصل على ${SHRINK_LABEL} مجاناً`,
-    price: 599,
-    units: 36,
-    originalPrice: 900,
-    saving: 301,
-    note: `2 ${SHRINK_LABEL} + ${SHRINK_LABEL} هدية — أقوى عرض الصيف.`,
-    deliveryNote: 'التوصيل مجاني 🚚',
-    freeShipping: true,
-    image: offerSummer,
-    accent: '#F97316',
-  },
-  {
-    id: 'combo',
-    name: 'عرض الكومبو',
-    badge: '🎁 عرض خاص',
-    description: `12 عبوة Healthy Cola (${HEALTHY_COLA_SIZE} · ${SHRINK_LABEL}) + 6 قطع هدية من اختيارك`,
-    price: 299,
-    units: 18,
-    originalPrice: 450,
-    saving: 151,
-    note: `${SHRINK_LABEL} + هدية من اختيارك — أفضل قيمة.`,
-    deliveryNote: 'التوصيل مجاني 🚚',
-    freeShipping: true,
-    image: offerCombo,
+    name: 'عرض الـ 30 كانز',
+    badge: '⭐ الأكثر توفيرًا',
+    description: `30 كانز Healthy Cola (${CAN_SIZE}) — ${FLAVOR_COUNT_LABEL} من اختيارك`,
+    price: 600,
+    units: 30,
+    originalPrice: 725,
+    saving: 125,
+    note: 'أوفر سعر — 30 كانز بـ 600 جنيه بدل 725.',
+    deliveryNote: 'الشحن يُحدد مع الكول سنتر',
+    shippingMode: 'call_center',
+    freeShipping: false,
+    image: offerThirtyCans,
     accent: '#6B21A8',
   },
   {
-    id: 'month',
-    name: 'عرض الشرنك',
-    badge: 'وفر أكتر 🔥',
-    description: `12 عبوة Healthy Cola (${HEALTHY_COLA_SIZE} · ${SHRINK_LABEL})`,
-    price: 229,
-    units: 12,
-    originalPrice: 300,
-    saving: 71,
-    note: `${SHRINK_LABEL} — يكفي البيت طول الشهر.`,
-    deliveryNote: 'التوصيل 50 جنيه',
+    id: 'combo',
+    name: 'عرض 5 + 1 هدية',
+    badge: '🎁 الكانز السادسة هدية',
+    description: `اشتري 5 كانز Healthy Cola (${CAN_SIZE}) واحصل على الكانز السادسة هدية`,
+    price: 125,
+    units: 6,
+    originalPrice: 150,
+    saving: 25,
+    note: '5 كانز + كانز هدية — جرّب كل النكهات.',
+    deliveryNote: 'الشحن يُحدد مع الكول سنتر',
+    shippingMode: 'call_center',
     freeShipping: false,
-    image: offerShrink,
+    image: offerFivePlusOne,
     accent: '#DC2626',
   },
 ]
@@ -103,14 +90,24 @@ const LOCAL_BUNDLES = [
 const heroPerks = [
   {label: '0 سكر' },
   {label: '0 سعرات' },
+  {label: '6 نكهات' },
   {label: 'مناسب للكيتو' },
   {label: 'بدون أسبارتام' },
   {label: 'مناسبة لمرضى السكر' },
 ]
 
+const flavorShowcase = [
+  { name: 'كولا', en: 'Cola', desc: 'الطعم الأصلي اللي بتحبه — صودا غنية بدون سكر.', image: canCola, accent: '#E63946' },
+  { name: 'أناناس', en: 'Pineapple', desc: 'انتعاش استوائي حلو من غير سعرات.', image: canPineapple, accent: '#CA8A04' },
+  { name: 'ليمون نعناع', en: 'Lemon Mint', desc: 'ليمون منعش مع نعناع بارد في كل رشفة.', image: canLemonMint, accent: '#65A30D' },
+  { name: 'برتقال', en: 'Orange', desc: 'برتقال طبيعي وخفيف على المعدة.', image: canOrange, accent: '#F97316' },
+  { name: 'تفاح أخضر', en: 'Green Apple', desc: 'تفاح أخضر مقرمش وانتعاش طويل.', image: canGreenApple, accent: '#84CC16' },
+  { name: 'توت مشكل', en: 'Mix Berries', desc: 'خلطة توت غنية وطعم مميز.', image: canMixBerries, accent: '#7E22CE' },
+]
+
 const benefitCards = [
   { icon: '🔥', title: 'طعم كولا حقيقي', text: 'صودا قوية، نكهة غنية، وطعم حقيقي في أي وقت من اليوم.' },
-  { icon: '🌿', title: 'اختيار أذكى', text: 'استمتع بطعم الكولا اللي بتحبه من غير سكر مضاف ومن غير سعرات حرارية.' },
+  { icon: '🌈', title: '6 نكهات مختلفة', text: 'كولا، أناناس، ليمون نعناع، برتقال، تفاح أخضر، وتوت مشكل — اختار اللي يعجبك.' },
   { icon: '💪', title: 'لنمط حياتك', text: 'مناسب للرياضيين، مرضى السكر، نظام الكيتو، والأنظمة منخفضة السعرات.' },
   { icon: '🚀', title: 'طلب سريع', text: 'ادخل بياناتك — فريق Healthy Cola هيتواصل سريعاً للتأكيد، والتوصيل يبدأ خلال ساعات بعدها.' },
 ]
@@ -118,9 +115,9 @@ const benefitCards = [
 const egyptGovs = ['القاهرة', 'الجيزة', 'الإسكندرية']
 
 const faqs = [
-  { q: 'إيه حجم عبوة Healthy Cola؟', a: `نكهة الكولا ${HEALTHY_COLA_SIZE}، ونكهة ليمون نعناع ${HEALTHY_LEMON_SIZE}.` },
-  { q: 'إيه حجم زجاجة ليمون نعناع؟', a: `حجم الزجاجة الرسمي ${HEALTHY_LEMON_SIZE}.` },
-  { q: 'إيه معنى شرنك؟', a: `${SHRINK_LABEL} — أي 12 عبوة في العرض.` },
+  { q: 'إيه حجم كانز Healthy Cola؟', a: `كل الكانزات ${CAN_SIZE} — ${FLAVOR_COUNT_LABEL}: كولا، أناناس، ليمون نعناع، برتقال، تفاح أخضر، وتوت مشكل.` },
+  { q: 'إيه النكهات المتاحة؟', a: `6 نكهات: كولا، أناناس، ليمون نعناع، برتقال، تفاح أخضر، وتوت مشكل — وكلها بدون سكر.` },
+  { q: 'إيه العروض المتاحة؟', a: 'عرض 30 كانز بـ 600 جنيه بدل 725، وعرض 5 كانز + الكانز السادسة هدية بـ 125 جنيه بدل 150.' },
   { q: 'التوصيل مجاني ولا بفلوس؟', a: SHIPPING_ONCE_LABEL },
   { q: 'الشحن بيتكرر على كل باقة؟', a: 'لا، الشحن مرة واحدة بس على الطلب كله — ولو طلبك كله عروض بتوصيل مجاني مش هتدفع شحن خالص.' },
   { q: 'التوصيل بياخد قد إيه؟', a: 'فريق Healthy Cola بيتواصل سريعاً لتأكيد الطلب، والتوصيل يبدأ خلال ساعات بعد التأكيد. معظم الطلبات تصل في نفس اليوم حسب المنطقة.' },
@@ -174,7 +171,7 @@ function OrderTotalBreakdown({ subtotal, shippingFee, total, originalTotal, savi
               </div>
             ) : null}
       <div className="order-breakdown-row order-breakdown-total">
-        <span>الإجمالي</span>
+        <span>{deferred ? 'الإجمالي المبدئي' : 'الإجمالي'}</span>
         <div className="order-breakdown-total-val">
           <strong>{total} ج.م</strong>
           {originalTotal > total && <s>{originalTotal} ج.م</s>}
@@ -189,7 +186,16 @@ function OrderTotalBreakdown({ subtotal, shippingFee, total, originalTotal, savi
   )
 }
 
-const LOCAL_FLAVOR_BUNDLES = LOCAL_BUNDLES.map(b => ({ ...b, flavorImages: { 'كولا': healthyCola, 'ليمون نعناع': healthyLemon } }))
+const COLA_FLAVOR_IMAGES = {
+  'كولا': canCola,
+  'أناناس': canPineapple,
+  'ليمون نعناع': canLemonMint,
+  'برتقال': canOrange,
+  'تفاح أخضر': canGreenApple,
+  'توت مشكل': canMixBerries,
+}
+
+const LOCAL_FLAVOR_BUNDLES = LOCAL_BUNDLES.map(b => ({ ...b, flavorImages: COLA_FLAVOR_IMAGES }))
 
 // ─── FLAVOR PICKER COMPONENT ─────────────────────────────────────────────────
 
@@ -219,16 +225,16 @@ function FlavorPicker({ units, qty, options, flavors, onChange, label }) {
     onChange(next)
   }
   return <div className="flavor-section">
-    <div className="flavor-header"><h3 className="flavor-title">{label}</h3><span className="flavor-badge">{total} عبوة</span></div>
+    <div className="flavor-header"><h3 className="flavor-title">{label}</h3><span className="flavor-badge">{total} كانز</span></div>
     {options.length === 0 ? <p role="alert">النكهات غير متاحة حاليًا — اختار عرض تاني.</p> : <>
-      <p className="flavor-hint">اختار توزيع النكهات اللي يناسبك، والمجموع لازم يكون {total} عبوة.</p>
+      <p className="flavor-hint">اختار توزيع النكهات اللي يناسبك، والمجموع لازم يكون {total} كانز.</p>
       <div className="flavor-quick-picks">
         {options.map(f => <button key={f.id} type="button" className="fqp-btn" onClick={() => onChange(Object.fromEntries(options.map(x => [x.id, x.id === f.id ? total : 0])))}>كله {f.name}</button>)}
         {options.length > 1 && <button type="button" className="fqp-btn fqp-btn--recommended" onClick={() => onChange(distributeFlavors(options, total))}>{options.length === 2 ? '⚖️ نص نص' : '⚖️ توزيع بالتساوي'}</button>}
       </div>
       <div className="flavor-grid">
         {options.map(f => <div key={f.id} className={`flavor-card ${flavors[f.id] > 0 ? 'active-cola' : ''}`}>
-          {f.image ? <img src={f.image} alt={f.name} width="64" height="64" style={{ objectFit: 'contain' }} /> : <div className="flavor-emoji">🥤</div>}
+          {f.image ? <img src={f.image} alt={`كانز ${f.name}`} width="64" height="100" style={{ objectFit: 'contain' }} /> : <div className="flavor-emoji">🥤</div>}
           <div className="flavor-name">{f.name}</div>
           <div className="flavor-counter">
             <button type="button" className="fctr-btn" aria-label={`زيادة ${f.name}`} onClick={() => adjust(f.id, 1)} disabled={flavors[f.id] >= total}>+</button>
@@ -237,7 +243,7 @@ function FlavorPicker({ units, qty, options, flavors, onChange, label }) {
           </div>
         </div>)}
       </div>
-      <p className="flavor-hint" role="status">{used === total ? 'تم توزيع كل العبوات ✓' : `باقي ${total - used} عبوة للتوزيع`}</p>
+      <p className="flavor-hint" role="status">{used === total ? 'تم توزيع كل الكانزات ✓' : `باقي ${total - used} كانز للتوزيع`}</p>
     </>}
   </div>
 }
@@ -347,7 +353,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
           notes: shippingOrderNote(notes, cartItems, 'cola'),
           bundle: offerSummary,
           subtotal: `${subtotal} ج.م`,
-          shippingFee: shippingFee === 0 ? 'مجاني' : `${shippingFee} ج.م`,
+          shippingFee: cartShippingLabel(cartItems, 'cola'),
           price: `${totalPrice} ج.م`,
           value: String(totalPrice),          // plain number string — Apps Script parses with Number()
           quantity: String(cartItems.reduce((s, i) => s + i.qty, 0)),
@@ -431,7 +437,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
               </div>
             )}
             <div className="success-card-row">
-              <span className="success-label">الإجمالي</span>
+              <span className="success-label">{shipState.deferred ? 'الإجمالي المبدئي' : 'الإجمالي'}</span>
               <span className="success-val price">{totalPrice} ج.م</span>
             </div>
             <div className="success-card-divider" />
@@ -468,7 +474,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
         <div key={i}>
           <div className="confirm-summary" style={{ '--accent': item.bundle.accent }}>
             <div className="confirm-img">
-              <img src={item.bundle.image || healthyCola} alt={`صورة ${item.bundle.name} في الطلب`} />
+              <img src={item.bundle.image || canCola} alt={`صورة ${item.bundle.name} في الطلب`} />
             </div>
             <div className="confirm-info">
               <div className="confirm-info-top">
@@ -491,7 +497,7 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
             units={unitsPerBundle(item.bundle)}
             qty={item.qty}
             flavors={itemFlavors[i]}
-            label={`اختار توزيع نكهات الـ ${unitsPerBundle(item.bundle) * item.qty} عبوة`}
+            label={`اختار توزيع نكهات الـ ${unitsPerBundle(item.bundle) * item.qty} كانز`}
             onChange={(f) => setItemFlavors(prev => prev.map((x, idx) => idx === i ? { ...x, ...f } : x))}
           />
         </div>
@@ -623,7 +629,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
             <span>بطريقة تناسب حياتك الصحية</span>
           </h1>
           <p className="hero-sub">
-            من غير سكر… من غير سعرات حرارية… ومن غير ما تبوّظ نظامك
+            كانز 250 مل بـ 6 نكهات… من غير سكر، من غير سعرات، ومن غير ما تبوّظ نظامك
           </p>
           <DeliveryHighlight />
           <p className="hero-shipping-note">{shippingSummary(bundles, 'cola')}</p>
@@ -662,8 +668,8 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
                 ))}
               </div>
               <div className="bottle-platform" />
-              <img src={healthyCola} alt={`عبوة Healthy Cola بنكهة الكولا — ${HEALTHY_COLA_SIZE}`} />
-              <div className="bottle-label">كولا · {HEALTHY_COLA_SIZE}</div>
+              <img src={canCola} alt={`كانز Healthy Cola بنكهة الكولا — ${CAN_SIZE}`} />
+              <div className="bottle-label">كولا · {CAN_SIZE}</div>
             </div>
             <div className="hero-can-item lemon">
               <div className="bubbles-wrap">
@@ -683,12 +689,32 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
                 ))}
               </div>
               <div className="bottle-platform lemon-platform" />
-              <img src={healthyLemon} alt={`زجاجة Healthy Cola ليمون نعناع — ${HEALTHY_LEMON_SIZE}`} />
+              <img src={canLemonMint} alt={`كانز Healthy Cola ليمون نعناع — ${CAN_SIZE}`} />
               <div className="bottle-label lemon-label">
-                <span className="bottle-label-line">ليمون نعناع · {HEALTHY_LEMON_SIZE}</span>
+                <span className="bottle-label-line">ليمون نعناع · {CAN_SIZE}</span>
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="section flavors-section" id="flavors-section">
+        <div className="section-head">
+          <p className="eyebrow-pill">6 نكهات كانز</p>
+          <h2>اختار نكهتك المفضلة</h2>
+          <p>كل الكانزات 250 مل — بدون سكر وبدون سعرات.</p>
+        </div>
+        <div className="flavor-showcase-grid">
+          {flavorShowcase.map((flavor) => (
+            <div className="flavor-showcase-card" key={flavor.name} style={{ '--flavor-accent': flavor.accent }}>
+              <div className="flavor-showcase-img">
+                <img src={flavor.image} alt={`كانز Healthy Cola ${flavor.name}`} loading="lazy" />
+              </div>
+              <h3>{flavor.name}</h3>
+              <span className="flavor-showcase-en">{flavor.en}</span>
+              <p>{flavor.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -730,7 +756,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
                 {inCart && <div className="selected-check">✓</div>}
                 {bundle.badge && <div className="bundle-row-badge">{bundle.badge}</div>}
                 <div className="bundle-row-img">
-                  <img src={bundle.image || healthyCola} alt={`صورة ${bundle.name} — Healthy Cola`} loading="lazy" />
+                  <img src={bundle.image || canCola} alt={`صورة ${bundle.name} — Healthy Cola`} loading="lazy" />
                 </div>
                 <div className="bundle-row-info">
                   <h3>{bundle.name}</h3>
@@ -776,7 +802,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
         <div className="section-head">
           <p className="eyebrow-pill">ليه Healthy Cola؟</p>
           <h2>نفس إحساس الكولا… باختيار أذكى</h2>
-          <p>كولا {HEALTHY_COLA_SIZE} · ليمون نعناع {HEALTHY_LEMON_SIZE}.</p>
+          <p>كانز {CAN_SIZE} · {FLAVOR_COUNT_LABEL} — كولا، أناناس، ليمون نعناع، برتقال، تفاح أخضر، وتوت مشكل.</p>
         </div>
         <div className="benefit-grid">
           {benefitCards.map((b) => (
