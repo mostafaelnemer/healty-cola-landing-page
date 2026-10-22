@@ -1,0 +1,17 @@
+.bc-panel { display: grid; gap: 14px; }
+.bc-title { font-weight: 700; margin: 0; }
+.bc-component { border: 1px solid var(--line, #e5e7eb); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+.bc-component--done { border-color: #10b981; }
+.bc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bc-head strong { font-size: 1rem; }
+.bc-count { background: #f3f4f6; border-radius: 999px; padding: 2px 8px; font-size: 0.85rem; }
+.bc-status { color: #6b7280; font-size: 0.85rem; margin-inline-start: auto; }
+.bc-status.is-done { color: #059669; font-weight: 700; }
+.bc-fixed, .bc-empty { margin: 0; color: #6b7280; font-size: 0.9rem; }
+.bc-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.bc-option { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #d1d5db; background: #fff; color: inherit; border-radius: 999px; padding: 8px 12px; cursor: pointer; font: inherit; }
+.bc-option img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+.bc-option-dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; }
+.bc-option.is-selected { border-color: #10b981; background: #ecfdf5; font-weight: 700; }
+.bc-option.is-selected .bc-option-dot { background: #10b981; }
+.bc-option:disabled { opacity: 0.45; cursor: not-allowed; }
