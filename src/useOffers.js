@@ -23,6 +23,7 @@ export function getPublicClient() {
 export function mapOffer(row, local, site = row.site) {
   const price = Number(row.price)
   const originalPrice = Number(row.original_price)
+  const shared = Boolean(row.shared_id && row.shared_id !== row.id)
 
   return {
     id: row.slug,
@@ -35,7 +36,7 @@ export function mapOffer(row, local, site = row.site) {
     saving: Math.max(0, originalPrice - price),
     units: row.units,
     unitsLabel: row.units_label || `${row.units} قطعة`,
-    ...flavorData(row.flavors, site, row.slug, local),
+    ...flavorData(row.flavors, site, row.slug, local, row.selection, shared),
     image: row.image_url || local?.image || null,
     accent: row.accent,
     deliveryNote: shippingLabel(row, site),
@@ -101,7 +102,7 @@ export function useOffers(site, localBundles) {
 
   const bundles = useMemo(() => {
     const selectedRows = previewRows || rows
-    if (!selectedRows) return localBundles.map(b => ({ ...b, ...flavorData(b.flavors, site, b.id, b) }))
+    if (!selectedRows) return localBundles.map(b => ({ ...b, ...flavorData(b.flavors, site, b.id, b, b.selection) }))
     const localBySlug = Object.fromEntries(localBundles.map((b) => [b.id, b]))
     return selectedRows.map((row) => mapOffer(row, localBySlug[row.slug], site))
   }, [rows, previewRows, localBundles, site])

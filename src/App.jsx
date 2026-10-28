@@ -13,6 +13,8 @@ import logo from './assets/logo.png'
 import offerThirtyCans from './assets/offer_30_cans.jpeg'
 import offerFivePlusOne from './assets/offer_5_plus_1.jpeg'
 import { useOffers } from './useOffers'
+import BundleComponents from './components/BundleComponents.jsx'
+import { emptyBundleValues, bundleValuesComplete, describeBundleValues } from './components/bundleSelection.js'
 import './App.css'
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
@@ -49,6 +51,7 @@ const calcOrderOriginalTotal = (items) => calcItemsOriginalSubtotal(items) + cal
 
 /** عدد العبوات في العرض الواحد — بييجي من الداشبورد (units) */
 const unitsPerBundle = (bundle) => Math.max(1, Number(bundle?.units) || 12)
+const needsComponents = (bundle) => Array.isArray(bundle?.components) && bundle.components.length > 0
 
 /** العروض المحلية: fallback + مصدر الصور المحلية. الـ id هنا لازم يطابق الـ slug في الداشبورد */
 const LOCAL_BUNDLES = [
@@ -268,10 +271,14 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
   const [itemFlavors, setItemFlavors] = useState(() =>
     initialItems.map(item => distributeFlavors(item.bundle.flavorOptions, unitsPerBundle(item.bundle) * item.qty))
   )
+  const [itemComponents, setItemComponents] = useState(() =>
+    initialItems.map(item => needsComponents(item.bundle) ? emptyBundleValues(item.bundle.components) : null)
+  )
 
   const removeItem = (i) => {
     setItems(prev => prev.filter((_, idx) => idx !== i))
     setItemFlavors(prev => prev.filter((_, idx) => idx !== i))
+    setItemComponents(prev => prev.filter((_, idx) => idx !== i))
   }
 
   if (items.length === 0) {
@@ -298,7 +305,9 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
 
   const buildOrderSummary = () =>
     cartItems.map((item, i) => {
-      const summary = `${item.bundle.name} ×${item.qty} (${describeFlavors(item.bundle, itemFlavors[i])})`
+      const summary = needsComponents(item.bundle)
+        ? `${item.bundle.name} ×${item.qty} (${describeBundleValues(item.bundle.components, itemComponents[i])})`
+        : `${item.bundle.name} ×${item.qty} (${describeFlavors(item.bundle, itemFlavors[i])})`
       return summary
     }).join(' | ')
 
@@ -312,8 +321,11 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
     if (purchaseSubmitLock.current) return
 
     setTouched({ name: true, phone: true, gov: true, address: true })
-    if (cartItems.some((item, i) => item.bundle.flavorsAvailable === false ||
-      item.bundle.flavorOptions.reduce((sum, f) => sum + (itemFlavors[i][f.id] || 0), 0) !== unitsPerBundle(item.bundle) * item.qty)) return
+    if (cartItems.some((item, i) => {
+      if (item.bundle.flavorsAvailable === false) return true
+      if (needsComponents(item.bundle)) return !bundleValuesComplete(item.bundle.components, itemComponents[i])
+      return item.bundle.flavorOptions.reduce((sum, f) => sum + (itemFlavors[i][f.id] || 0), 0) !== unitsPerBundle(item.bundle) * item.qty
+    })) return
     const currentErrors = {
       name: !name.trim() ? 'الاسم مطلوب' : '',
       phone: !phone.trim() ? 'رقم الموبايل مطلوب' : !/^01[0-9]{9}$/.test(phone.trim()) ? 'رقم غير صحيح، مثال: 01XXXXXXXXX' : '',
@@ -421,7 +433,11 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
                   </div>
                   <div className="success-card-row">
                     <span className="success-label">النكهات</span>
-                    <span className="success-val">{describeFlavors(item.bundle, itemFlavors[i])}</span>
+                    <span className="success-val">
+                      {needsComponents(item.bundle)
+                        ? describeBundleValues(item.bundle.components, itemComponents[i])
+                        : describeFlavors(item.bundle, itemFlavors[i])}
+                    </span>
                   </div>
                   {i < cartItems.length - 1 && <div className="success-card-divider" />}
                 </div>
@@ -494,14 +510,22 @@ function StepConfirm({ cartItems: initialItems, onBack }) {
               </div>
             </div>
           </div>
-          <FlavorPicker
-            options={item.bundle.flavorOptions}
-            units={unitsPerBundle(item.bundle)}
-            qty={item.qty}
-            flavors={itemFlavors[i]}
-            label={`اختار توزيع نكهات الـ ${unitsPerBundle(item.bundle) * item.qty} كانز`}
-            onChange={(f) => setItemFlavors(prev => prev.map((x, idx) => idx === i ? { ...x, ...f } : x))}
-          />
+          {needsComponents(item.bundle) ? (
+            <BundleComponents
+              components={item.bundle.components}
+              values={itemComponents[i] ?? {}}
+              onChange={(value) => setItemComponents(prev => prev.map((x, idx) => idx === i ? value : x))}
+            />
+          ) : (
+            <FlavorPicker
+              options={item.bundle.flavorOptions}
+              units={unitsPerBundle(item.bundle)}
+              qty={item.qty}
+              flavors={itemFlavors[i]}
+              label={`اختار توزيع نكهات الـ ${unitsPerBundle(item.bundle) * item.qty} كانز`}
+              onChange={(f) => setItemFlavors(prev => prev.map((x, idx) => idx === i ? { ...x, ...f } : x))}
+            />
+          )}
         </div>
       ))}
 
