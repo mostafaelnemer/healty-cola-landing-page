@@ -571,7 +571,6 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
     .filter(b => b.flavorsAvailable !== false && (cart[b.id] || 0) > 0)
     .map(b => ({ bundle: b, qty: cart[b.id] }))
   const cartCheckoutTotal = calcOrderTotal(cartItems)
-  const cartShippingFee = calcShipping(cartItems)
 
   const addToCart = (bundleId) => bundles.some(b => b.id === bundleId && b.flavorsAvailable !== false) && setCart(c => ({ ...c, [bundleId]: (c[bundleId] || 0) + 1 }))
   const setQty = (bundleId, val) => {
@@ -610,7 +609,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
             ))}
           </div>
           <button className="sticky-cart-btn" disabled={!offersReady} onClick={handleCheckout}>
-            {content.checkoutCta} — {cartCheckoutTotal} ج.م {cartShippingFee === 0 ? '· توصيل مجاني 🚚' : ''} ←
+            {content.checkoutCta} — {cartCheckoutTotal} ج.م ←
           </button>
         </div>
       )}
@@ -787,7 +786,7 @@ function Landing({ bundles, offersReady, onConfirm, initialCart = {} }) {
         <OfferTrustPills />
         {cartCount > 0 && (
           <button type="button" className="next-btn landing-next-btn" disabled={!offersReady} onClick={handleCheckout}>
-            {content.checkoutCta} ({cartCount} قطعة — {cartCheckoutTotal} ج.م {cartShippingFee === 0 ? '· التوصيل مجاني 🚚' : 'شامل الشحن'}) ←
+            {content.checkoutCta} ({cartCount} قطعة — {cartCheckoutTotal} ج.م) ←
           </button>
         )}
       </section>
